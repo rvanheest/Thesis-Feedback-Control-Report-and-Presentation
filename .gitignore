@@ -1,0 +1,20 @@
+# IntelliJ IDEA
+.idea
+/out
+/SDK/*SDK
+/*.bat
+*.iml
+*.sc
+/lib
+
+# Eclipse
+/.settings/
+/**/.settings/
+.classpath
+.project
+/**/bin/
+.cache-main
+.cache-tests
+
+# Maven
+/**/target/
