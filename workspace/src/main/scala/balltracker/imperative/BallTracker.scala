@@ -77,19 +77,11 @@ class BallTracker extends Application {
 			}
 
 			// drawing all the elements
-			Platform.runLater(() => draw((x, y), (setpointX, setpointY), acc))
+			Platform.runLater(() => Draw.draw((x, y), (setpointX, setpointY), acc, history))
 
 			// sleep and call again
 			Thread.sleep(16)
 			update
-		}
-
-		def draw(pos: Position, setpoint: Position, acc: Acceleration)(implicit gc: GraphicsContext) = {
-			Draw.drawBackground
-			Draw.drawHistory(history)
-			Draw.drawLine(pos, setpoint)
-			Draw.drawBall(pos)
-			Draw.drawVectors(pos, acc)
 		}
 
 		val canvas = new Canvas(width, height)

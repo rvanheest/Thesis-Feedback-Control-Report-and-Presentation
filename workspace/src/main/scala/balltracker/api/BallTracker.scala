@@ -68,13 +68,7 @@ class BallTracker extends Application {
 				modelY.onNext(0.0)
 			}))
 			.observeOn(JavaFxScheduler())
-			.tee(pair => {
-				Draw.drawBackground
-				Draw.drawLine(pair.position, pair.goal)
-				Draw.drawHistory(history)
-				Draw.drawBall(pair.position)
-				Draw.drawVectors(pair.position, pair.acceleration)
-			})
+			.tee(pair => Draw.draw(pair.position, pair.goal, pair.acceleration, history))
 			.map(_.position)
 			.buffer(5)
 			.map(_(4))

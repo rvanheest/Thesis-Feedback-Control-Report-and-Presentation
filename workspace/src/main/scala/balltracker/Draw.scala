@@ -12,6 +12,14 @@ import javafx.scene.shape.StrokeLineCap
 
 object Draw {
 
+	def draw(pos: Position, setpoint: Position, acc: Acceleration, history: History)(implicit gc: GraphicsContext) = {
+		drawBackground
+		drawHistory(history)
+		drawLine(pos, setpoint)
+		drawBall(pos)
+		drawVectors(pos, acc)
+	}
+
 	def drawBall(point: Position)(implicit gc: GraphicsContext) = {
 		val (x, y) = point
 		val diameter = 2 * ballRadius
