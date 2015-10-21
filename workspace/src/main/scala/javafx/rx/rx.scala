@@ -15,6 +15,10 @@ package object rx {
 		new EventHandler[T] { override def handle(e: T): Unit = action(e) }
 	}
 
+	implicit def toRunnable(runnable: () => Unit): Runnable = {
+		new Runnable { override def run = runnable() }
+	}
+
 	implicit class Events(val node: Node) extends AnyVal {
 
 		def getEvent[T <: InputEvent](event: EventType[T]): Observable[T] = Observable.create[T](observer => {
