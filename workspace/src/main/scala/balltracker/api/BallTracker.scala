@@ -1,22 +1,28 @@
 package balltracker.api
 
-import javafx.application.Application
-import balltracker.Types._
-import javafx.stage.Stage
-import javafx.scene.canvas.Canvas
-import balltracker.Draw
-import javafx.scene.layout.StackPane
-import javafx.geometry.Pos
-import fbc.commons.Controllers
-import javafx.scene.Scene
-import javafx.rx.Events
-import applied_duality.reactive.Observable
-import applied_duality.reactive.Observer
-import balltracker._
-import fbc.Component
 import scala.concurrent.duration.DurationInt
-import applied_duality.reactive.schedulers.NewThreadScheduler
+
+import applied_duality.reactive.Observable
+import applied_duality.reactive.ObservableX
+import applied_duality.reactive.Observer
 import applied_duality.reactive.schedulers.JavaFxScheduler
+import applied_duality.reactive.schedulers.NewThreadScheduler
+import balltracker.AccVel
+import balltracker.AccVelPos
+import balltracker.AccVelPosGoalPair
+import balltracker.AccVelPosPair
+import balltracker.Draw
+import balltracker.Types._
+import fbc.Component
+import fbc.Operators
+import fbc.commons.Controllers
+import javafx.application.Application
+import javafx.geometry.Pos
+import javafx.rx.Events
+import javafx.scene.Scene
+import javafx.scene.canvas.Canvas
+import javafx.scene.layout.StackPane
+import javafx.stage.Stage
 
 class BallTracker extends Application {
 
