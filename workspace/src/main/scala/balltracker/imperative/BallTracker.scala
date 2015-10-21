@@ -21,34 +21,28 @@ import javafx.stage.WindowEvent
 class BallTracker extends Application {
 
 	def start(stage: Stage) = {
-		var x = 20.0
-		var y = 20.0
-		var vx = 0.0
-		var vy = 0.0
+		var (x, y) = (20.0, 20.0)
+		var (vx, vy) = (0.0, 0.0)
 
-		var setpointX = x
-		var setpointY = y
-		var prevErrorX = 0.0
-		var prevErrorY = 0.0
-		var integralX = 0.0
-		var integralY = 0.0
+		var (setpointX, setpointY) = (x, y)
+		var (prevErrorX, prevErrorY) = (0.0, 0.0)
+		var (integralX, integralY) = (0.0, 0.0)
 
-		var kp = 3.0
-		var ki = 0.0001
-		var kd = 80.0
+		val kp = 3.0
+		val ki = 0.0001
+		val kd = 80.0
 
 		val history = new History
 		var historyTick = 0
 
 		def pid: Acceleration = {
-			val errorX = setpointX - x
-			integralX += errorX
-			val derivativeX = errorX - prevErrorX
-			prevErrorX = errorX
+			val (errorX, errorY) = (setpointX - x, setpointY - y)
+			val (derivativeX, derivativeY) = (errorX - prevErrorX, errorY - prevErrorY)
 
-			val errorY = setpointY - y
+			integralX += errorX
 			integralY += errorY
-			val derivativeY = errorY - prevErrorY
+
+			prevErrorX = errorX
 			prevErrorY = errorY
 
 			def pid(error: Double, integral: Double, derivative: Double) = {
@@ -61,12 +55,12 @@ class BallTracker extends Application {
 		@tailrec
 		def update(implicit gc: GraphicsContext): Unit = {
 			// going from acceleration to position by a double integral
-			var a = pid
-			var ax = a._1
-			var ay = a._2
-			var maxA = 0.2
-			ax = math.max(math.min(ax, maxA), -maxA)
-			ay = math.max(math.min(ay, maxA), -maxA)
+			val maxA = 0.2
+			def minMaxAcc(a: Acc) = math.max(math.min(a, maxA), -maxA)
+
+			val (a1, a2) = pid
+			val acc@(ax, ay) = (minMaxAcc(a1), minMaxAcc(a2))
+
 			vx += ax
 			vy += ay
 			x += vx
@@ -83,17 +77,19 @@ class BallTracker extends Application {
 			}
 
 			// drawing all the elements
-			Platform.runLater(() => {
-				Draw.drawBackground
-				Draw.drawHistory(history)
-				Draw.drawLine((x, y), (setpointX, setpointY))
-				Draw.drawBall((x, y))
-				Draw.drawVectors((x, y), (ax, ay))
-			})
+			Platform.runLater(() => draw((x, y), (setpointX, setpointY), acc))
 
 			// sleep and call again
 			Thread.sleep(16)
 			update
+		}
+
+		def draw(pos: Position, setpoint: Position, acc: Acceleration)(implicit gc: GraphicsContext) = {
+			Draw.drawBackground
+			Draw.drawHistory(history)
+			Draw.drawLine(pos, setpoint)
+			Draw.drawBall(pos)
+			Draw.drawVectors(pos, acc)
 		}
 
 		val canvas = new Canvas(width, height)
