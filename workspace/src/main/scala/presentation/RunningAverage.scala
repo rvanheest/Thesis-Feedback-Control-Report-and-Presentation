@@ -85,3 +85,19 @@ class RunningAverage(n: Int) extends Component[Double, Double] {
 		.tee(queue.enqueue(_))
 		.map(t => queue.sum / queue.size)
 }
+
+/*
+ * Running average with operators
+ */
+class RunningAverageWithOperators[X] {
+
+	val runningAverage = (src: fbc.Component[X, Double], n: Int) => 
+		src.scan(Queue[Double]())((queue, d) => {
+			if (queue.length == n)
+				queue.dequeue()
+			queue.enqueue(d)
+			
+			queue
+		})
+		.map(queue => queue.sum / queue.size)
+}
