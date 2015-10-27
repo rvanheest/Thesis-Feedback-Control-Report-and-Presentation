@@ -17,7 +17,6 @@ import fbc.Component
 import fbc.Operators
 import fbc.commons.Controllers
 import javafx.application.Application
-import javafx.geometry.Pos
 import javafx.rx.Events
 import javafx.scene.Scene
 import javafx.scene.canvas.Canvas
@@ -39,10 +38,8 @@ class BallTracker extends Application {
 		Draw.drawBall(ballRadius, ballRadius)
 
 		val root = new StackPane(canvas)
-		root.setAlignment(Pos.TOP_LEFT)
+		root.setAlignment(javafx.geometry.Pos.TOP_LEFT)
 
-		val modelX = new BallModel(ballRadius)
-		val modelY = new BallModel(ballRadius)
 		val pidX = Controllers.pidController(kp, ki, kd)
 		val pidY = Controllers.pidController(kp, ki, kd)
 		val history = new History
@@ -50,22 +47,13 @@ class BallTracker extends Application {
 		root.mouseClicked
 			.map(event => (event.getX, event.getY))
 			.publish(clicks => Observable.create((observer: Observer[AccVelPosGoalPair]) => {
-				val fbcX = feedbackSystem(pidX, modelX)
-				val fbcY = feedbackSystem(pidY, modelY)
+				val fbcX = Component[Position, Pos](_._1) >>> feedbackSystem(pidX)
+				val fbcY = Component[Position, Pos](_._2) >>> feedbackSystem(pidY)
+				val fbc = Component.from(clicks) >>> fbcX.zip(fbcY)(new AccVelPosPair(_, _))
 
-				clicks.map(_._1).subscribe(fbcX)
-				clicks.map(_._2).subscribe(fbcY)
-
-				val fbcXOut = fbcX.asObservable.observeOn(new NewThreadScheduler)
-				val fbcYOut = fbcY.asObservable.observeOn(new NewThreadScheduler)
-
-				fbcXOut.zip(fbcYOut)(new AccVelPosPair(_, _))
+				fbc.asObservable
 					.withLatestFrom(clicks)(new AccVelPosGoalPair(_, _))
 					.subscribe(observer)
-
-				// start both feedback systems
-				modelX.onNext(0.0)
-				modelY.onNext(0.0)
 			}))
 			.observeOn(JavaFxScheduler())
 			.tee(pair => Draw.draw(pair.position, pair.goal, pair.acceleration, history))
@@ -85,19 +73,15 @@ class BallTracker extends Application {
 		stage.show()
 	}
 
-	def feedbackSystem(pid: Component[Double, Double], model: BallModel): BallFeedbackSystem = {
-		pid.map(d => math.max(math.min(d * 0.001, maxA), -maxA)).concat(model).feedback(_.position)
+	def feedbackSystem(pid: Component[Double, Double]): BallFeedbackSystem = {
+		pid.map(d => math.max(math.min(d * 0.001, maxA), -maxA))
+				.scan(new AccVel)(new AccVel(_, _)).drop(1)
+				.scan(new AccVelPos(ballRadius))(new AccVelPos(_, _)).drop(1)
+				.sample(16 milliseconds)
+				.startWith(0.0)
+				.feedback(_.position)
 	}
 }
 object BallTracker extends App {
 	Application.launch(classOf[BallTracker])
-}
-
-class BallModel(ballRadius: Double) extends Component[Acc, AccVelPos] {
-	def transform(acceleration: Observable[Acc]): Observable[AccVelPos] = {
-		acceleration
-			.scanLeft(new AccVel)(new AccVel(_, _)).drop(1)
-			.scanLeft(new AccVelPos(ballRadius))(new AccVelPos(_, _)).drop(1)
-			.sample(16 milliseconds)
-	}
 }
