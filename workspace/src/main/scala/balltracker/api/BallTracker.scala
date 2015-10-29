@@ -25,8 +25,8 @@ import javafx.stage.Stage
 
 class BallTracker extends Application {
 
-	val kp = 3.0
-	val ki = 0.001
+	val kp = 3
+	val ki = 0.0001
 	val kd = 80
 
 	val maxA = 0.2
@@ -76,9 +76,8 @@ class BallTracker extends Application {
 	def feedbackSystem(pid: Component[Double, Double]): BallFeedbackSystem = {
 		pid.map(d => math.max(math.min(d * 0.001, maxA), -maxA))
 				.scan(new AccVel)(new AccVel(_, _)).drop(1)
-				.scan(new AccVelPos(ballRadius))(new AccVelPos(_, _)).drop(1)
+				.scan(new AccVelPos(ballRadius))(new AccVelPos(_, _))
 				.sample(16 milliseconds)
-				.startWith(0.0)
 				.feedback(_.position)
 	}
 }
