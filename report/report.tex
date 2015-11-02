@@ -1,0 +1,27 @@
+\documentclass[a4]{report}
+
+\usepackage[hmargin=2.5cm,vmargin=1.5cm]{geometry}
+\usepackage{color}
+
+\newcommand{\todo}[1]{\textcolor{red}{{\bf \large @TODO: #1}}}
+\newcommand{\HRule}{\rule{\textwidth}{0.5mm}}
+
+\begin{document}
+\input{title}
+
+\pagestyle{plain}
+\pagenumbering{roman}
+\setcounter{page}{1}
+\input{preface}
+
+\tableofcontents
+\clearpage
+
+\setcounter{page}{1}
+\pagenumbering{arabic}
+\input{introduction}
+
+
+
+
+\end{document}
