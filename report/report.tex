@@ -1,10 +1,54 @@
-\documentclass[a4]{report}
-
-\usepackage[hmargin=2.5cm,vmargin=1.5cm]{geometry}
+\documentclass[a4,english]{report}
+\usepackage[a4paper, hmargin=2.5cm,vmargin=1.5cm]{geometry}
+\usepackage[colorlinks = true]{hyperref}
+\hypersetup{
+  pdftitle    = {Master thesis},
+  pdfauthor   = {Richard van Heest},
+  colorlinks  = true,
+  linkcolor   = [rgb]{0.1,0.1,0.4},
+  citecolor   = [rgb]{0.4,0.1,0.1},
+  filecolor   = [rgb]{0.1,0.4,0.4},
+  urlcolor    = [rgb]{0.1,0.1,0.7}
+}
+\usepackage{listings}
 \usepackage{color}
+\usepackage{verbatim} % \verb{} for inline code
+\usepackage[numbers,square,super]{natbib} % references as [1,2,3] in superscript
+\usepackage{xspace} % put a space after an abbreviation in a newcommand
+\usepackage{amsmath}
 
-\newcommand{\todo}[1]{\textcolor{red}{{\bf \large @TODO: #1}}}
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{\large @TODO: #1}}}
+\newcommand{\code}[1]{\sloppy{\mbox{\texttt{#1}}}}
 \newcommand{\HRule}{\rule{\textwidth}{0.5mm}}
+
+\newcommand{\obs}{\texttt{Observable}\xspace}
+\newcommand{\obv}{\texttt{Observer}\xspace}
+\newcommand{\subs}{\texttt{Subscription}\xspace}
+\newcommand{\itr}{\texttt{Iterator}\xspace}
+\newcommand{\itb}{\texttt{Iterable}\xspace}
+
+\definecolor{pgreen}{rgb}{0,0.5,0}
+\definecolor{pgrey}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\lstset{frame=tb,
+  language=Scala,
+  showspaces=false,
+  showtabs=false,
+  breaklines=true,
+  showstringspaces=false,
+  breakatwhitespace=true,
+  commentstyle=\color{pgreen},
+  keywordstyle=\color{blue},
+  stringstyle=\color{mauve},
+  basicstyle=\ttfamily,
+  moredelim=[il][\textcolor{pgrey}]{$$},
+  moredelim=[is][\textcolor{pgrey}]{\%\%}{\%\%},
+  numbers=left,
+  numberstyle=\color{pgrey},
+  columns=flexible,
+  mathescape=true,
+  escapechar=|
+}
 
 \begin{document}
 \input{title}
@@ -14,14 +58,16 @@
 \setcounter{page}{1}
 \input{preface}
 
-\tableofcontents
 \clearpage
+{\hypersetup{linkcolor = black} \tableofcontents}
 
+\clearpage
 \setcounter{page}{1}
 \pagenumbering{arabic}
 \input{introduction}
 
-
+\clearpage
+\input{problem-statement}
 
 
 \end{document}
