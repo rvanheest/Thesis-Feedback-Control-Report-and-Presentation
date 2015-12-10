@@ -7,6 +7,7 @@ There have been many attempts to fit the philosophy of reactive programming into
 However, these translations have deviated a lot from the original implementation. Most remarkable is that some of them are not even purely `reactive' anymore \todo{reference to talk by Erik Meijer about derivation of Rx}. Given these deviations from the original paradigm and the state of complexity of these implementations, we decided to use a reference implementation of the original Rx that was recently written in Scala by Erik Meijer with the purpose of creating a light-weight implementation for developing mobile apps on Android, called RxMobile. \todo{is there a reference to RxMobile?} The following discussion and derivation of the API will however apply to both Reactive Extensions and RxMobile and in this section we will therefore refer to both as `Rx'.
 
 \subsection{Core components}
+\label{subsec:core-comps}
 Rx is a library for composing asynchronous and event based (reactive) programs by using observable sequences. The core of Rx consists of two interfaces: \obs and \obv. The latter can subscribe and react to the events that are emitted by the former. An \obs can emit zero or more events (called \textit{onNext}) and can possible end with a \textit{onCompleted} or an \textit{onError}. After either a \textit{onCompleted} or an \textit{onError} is emitted, no more events can follow. Therefore the emission protocol can be summarized by the following regular expression: \code{onNext* (onError | onCompleted)?}. \todo{reference to Rx Design Guidelines - http://go.microsoft.com/fwlink/?LinkID=205219} When an \obv subscribes to an \obs,  it will return a \subs. With this one can later unsubscribe from the \obs and clean up potential resources.
 
 \autoref{lst:obs-obv} shows these basic concepts of the \obs, \obv and \subs translated in Scala. Notice that here \subs is a superclass of \obv. Therefore there is no need for the \obs to return a \subs when an \obv subscribes to it. It will however return a \subs when another variant of \code{subscribe} is used, where for example a lambda expression is expected.
@@ -105,6 +106,7 @@ We can now put this lambda expression back into context by splitting it into two
 This derivation shows that interactive, pull-based collections are the mathematical dual of reactive, push-based collections. The \obs and \obv interfaces can directly be derived from the \itb and \itr interfaces. Both sets of interfaces can therefore be considered to be collections. In other words: streaming data behaves exactly the same way as regular collections, such as arrays, lists and sets, except for them being push-based rather than pull-based. \todo{cite Erik \@ Microsoft AND YMIAD} In the world of push-based collections one \emph{subscribes} to the stream in order to \emph{react} to the next element that is being send, whereas one \emph{asks} for the next element in a pull-based scenario.
 
 \subsection{Operators}
+\label{subsec:operators}
 Besides this difference between push-based and pull-based collections, all other rules apply for both of them. In regular pull-based collections many operators are defined to manipulate, transform, filter, fold or group items. These operators can therefore also be applied to push-based collections. However, rather than iterating over the collection and applying the transformation on each element, these operators \emph{react} to data being emitted by applying their particular transformation or side effect and passing the (transformed) data down to either a potential next operator or the \code{subscribe} method.
 
 The Rx implementations of the \obs interface provide a wide variety of operators that apply all sorts of transformations to a data stream. All operators are defined on \obs and will also return an \obs, making the API highly compositional. In order to understand how these operators work, we will look at some basic examples. Other, more advanced operators will be discussed in section \todo{reference to section on backpressure operators}.
@@ -131,9 +133,26 @@ Observable(1, 2, 3, 4, 5)		// emits:    1, 2, 3, 4, 5
 
 Just as the interactive collections, Rx has defined its operators in a way that composition of operators is very easy. In this way, simple operators can be chained in order to create the complex behavior that is often desired. There are many more operators defined on \obs, which are not mentioned in this section. For a full overview, we refer to the documentation on the Rx websites \todo{reference to reactivex.io, Rx.Net, etc.}. Some other operators will be discussed in \todo{reference to section on backpressure operators}. 
 
-\subsection{Cold vs. Hot}
-\todo{write a short piece about the difference between a cold and hot \obs and discussing several kinds of observables, such as mouse/keyboard, database, clocks, `normal', etc.}
-\todo{not sure anymore why we needed this subsection. only add it when it turns out we need it!}
+\subsection{Different kinds of streams}
+There are many kinds of observable streams that can all be implemented using Rx. For example, a clock or a timer is basically a stream of `ticks' that emits an element every time unit and therefore has a constant speed. A stream of keyboard events on the other hand emits an element every time a key is pressed and therefore most likely has a very irregular speed. A data stream can also be the result of a database query or a network call. In these instances it might take a certain amount of time before the first result is emitted, but every other result is received almost immediately after the first result appeared.
+
+%\subsubsection*{Finite vs. infinite}
+Some of these data streams, like the database query, are finite and will at a certain time in the future call \code{onCompleted}. Others, like the clock, will keep producing next elements forever, be it at a regular pace or quite irregular, like the keyboard. This kind of stream will never call \code{onCompleted}, but still may terminate with an error by calling \code{onError}.
+
+%There exist many operators in Rx to control these particular cases. Infinite streams can be limited by using operators like \code{take(n: Int)} (see section~\ref{subsec:operators}), \code{takeUntil(predicate: T $\Rightarrow$ Boolean)} and \code{takeWhile(predicate: T $\Rightarrow$ Boolean)} that propagate all elements until or while a certain predicate is satisfied. Streams that terminate with an error can be resumed by operators like \code{retry()} or \code{onErrorResumeNext(resume: Throwable $\Rightarrow$ Observable[T])}, which respectively resubscribe to the same \obs or subscribe to another \obs.
+
+%\subsubsection*{Hot vs. cold}
+One other difference between certain streams is what happens when one subscribes multiple times to the same stream. Clocks or keyboard events, like broadcasters, emit values whether or not anyone is subscribed. If no one is subscribed, the events are still produced, but are immediately discarded. On the other hand, if multiple observers subscribe to the same stream, they will all receive the same events. This kind of stream is referred to as a \textit{hot} stream.
+
+Some streams, like the \code{Observable.apply(1, 2, 3, 4)} in section~\ref{subsec:core-comps} or the database query, are not considered to be broadcasters. This kind of stream will create a new instance of itself every time an \obv subscribes to it. A second subscriber therefore receives the same result as a first subscriber, even though the second subscribes much later than the first one. This kind of stream is referred to as a \textit{cold} stream.
+
+%A hot stream can be converted to a cold stream by sharing a single subscription with all observers. This can be done by operators like \code{share()} and \code{publish(f: Observable[T] $\Rightarrow$ Observable[S])}.
+
+Notice that even though these differences do exist, they are not reflected in they type of the \obs. It is therefore always good to be careful with these distinctions and not to make any assumptions on streams being hot, cold, finite, infinite or error prone.
 
 \subsection{Subjects}
-\todo{a short story about the \code{Subject} and \code{BehaviorSubject}, since we gonna need these in the feedback control section}
+A \subj can be viewed as a bridge between the \obv and the \obs. It can be subscribed to like an \obs, but can also observe another stream like an \obv. This is a very powerful tool that is often used as a starting point for a stream. Every time a certain event happens outside the context of the \subj, its \obv part can be called using the three methods. It will then process these events in its \obs part and propagate them down the stream.
+
+A \subj can also be used to convert a cold stream into a hot stream. For this, a cold \obs is subscribed to the \subj. Because of this subscription, the cold \obs will be triggered to start emitting its events. The observable part of the \subj then becomes a hot \obs.
+
+A special instance of \subj is the \bsubj, which behaves like a normal \subj but additionally emits its most recent value (or a seed or default value if none has been emitted yet) immediately after an \obv is subscribed to it. This is often used in user interface components like a text field to signal a certain initial state.
