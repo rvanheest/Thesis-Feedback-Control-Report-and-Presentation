@@ -35,28 +35,47 @@ These operators form a first line of defense against the potential problems that
 \subsection{Callstack blocking}
 Another way of dealing with the problems of backpressure is to block the callstack and with that `park' the thread on which the \obs is running. Despite the fact that this approach goes against the `reactive' and `non-blocking' model of Rx, it can potentially be a viable option if the overproducing \obs runs on a thread that can safely be blocked.
 
-This technique is currently not used in RxJava, but is used in a particular implementation of the \code{zip} operator by Erik Meijer in RxMobile. Here ... \todo{continue with description of Erik's implementation of \code{zip}}
+This technique is currently not used in RxJava, but \emph{is} used in a particular implementation of the \code{zip} operator in RxMobile \todo{reference}. Once either one of the streams emits a value, it is blocked until the other \obs has produced a value as well. In order to avoid blocking the upstream callstack completely, it is strongly recommended to switch each \obs to another thread or scheduler using the \code{observeOn} operator. With this only the callstack is blocked upto the start of this new thread or scheduler. Once the other stream has produced a value, the blocking of the first \obs sequence is removed and the \code{zip} operator waits until either one of the sources emits a next value.
+
+\subsection{Reactive Streams}
+Reactive Streams is an initiative \todo{citation needed} of a number of companies such as Netflix, Pivotal and Typesafe to \textit{provide a standard for asynchronous stream processing with non-blocking backpressure}. This collaboration resulted in an alternative API \todo{cite http://www.reactive-streams.org/reactive-streams-1.0.0-javadoc/} for stream processing that is claimed to be capable of handling backpressure.
+
+This Reactive Streams API (see \autoref{lst:pub-sub}) looks fairly similar to the original API that was developed at Microsoft at first glance, but has some particular differences that have significant influence on the handling of backpressure. The \obs, renamed \code{Publisher} looks the same: it still is parameterized over \code{T} and still has a \code{subscribe} method. The \obv, which was passed to the \code{subscribe} method, is replaced with a \code{Subscriber}, even though it is almost the same\footnote{The \code{onComplete} method in \autoref{lst:pub-sub} does not contain a typing error compared to \autoref{lst:obs-obv}. This is actually how the API is specified!}. It only adds an extra method \code{onSubscribe}, which is called right after the \code{Subscriber} is subscribed to the \code{Publisher}. This \code{onSubscribe} method requires an argument of type \code{Subscription}. This last interface contains two methods: \code{cancel}, which is similar to the \code{unsubscribe} method in \autoref{lst:obs-obv} and a new method \code{request(n: Long)}.
+
+\begin{lstlisting}[caption={Publisher, Subscriber and Subscription}, label={lst:pub-sub}]
+trait Publisher[T] {
+    def subscribe(s: Subscriber[T]): Unit
+}
+
+trait Subscriber[T] {
+    def onNext(t: T): Unit
+    def onError(e: Throwable): Unit
+    def onComplete(): Unit
+    def onSubscribe(s: Subscription): Unit
+}
+
+trait Subscription {
+    def cancel(): void
+    def request(n: Long): Unit
+}
+\end{lstlisting}
+
+This last method reveals the whole idea behind the Reactive Streams API, namely to let the \code{Subscriber} request a certain amount of elements from the \code{Publisher}. This way the \code{Subscriber} is in charge of how many elements it will receive eventually and the \code{Publisher} just has to send at most this amount of elements by calling the \code{onNext} method.
+
+Taking a step back and evaluating the true meaning of what the Reactive Streams collaboration has come up with, results in the conclusion that this API is interactive rather than reactive, since it lets the consumer (\code{Subscriber}) be in charge of the rate at which data is sent to him. This is discussed in more detail in a conference talk at Lambda Jam 2014 by Erik Meijer \todo{cite https://www.youtube.com/watch?v=pOl4E8x3fmw}. Compared to the earlier discussed \itb collections, it only adds the feature of requesting more than one element (which is what the \itb interface technically does) per request. We will discuss the consequences of this API in more detail in a later section. \todo{}
 
 \subsection{Reactive pull}
-A much more profound way of dealing with backpressure is to give the \obv some more possibilities to communicate with the upstream \obs. Notice that the only way of communicating upstream is for the \obv to unsubscribe from the \obs. When an unsubscribe happens, the \obs is basically signaled to stop emitting data to the \obv. Besides unsubscribing there is no way in the standard Rx model to communicate upstream.
+The ideas that sprout from the Reactive Streams initiative have been incorporated in the RxJava library. They kept the original naming conventions of \obs and \obv but added a couple of new methods to the latter: \code{request(n: Int)}, which signals to the \obs that it will be able to handle \code{n} new elements and \code{onStart()}, which performs the initial request from the \obv to the \obs. After the initial request is done, the \obs sends the (max) \code{n} elements to the \obv, which receives them in the \code{onNext} method. This is now the place where the \obv can call \code{request} again to receive more data.
 
-The Reactive Streams initiative \todo{citation needed} is a collaboration between a number of companies such as Netflix, Pivotal and Typesafe to \textit{provide a standard for asynchronous stream processing with non-blocking backpressure}. They proposed an alternative to the Rx API that gives the \obv more possibilities to manage the number of elements that are emitted by the upstream \obs. RxJava now implements these new concepts by providing a couple of new methods on \obv: \code{request(n: Int)}, which signals to the \obs that it will be able to handle \code{n} new elements and \code{onStart()}, which performs the initial request from the \obv to the \obs. After the initial request is done, the \obs sends the (max) \code{n} elements to the \obv, which receives them in the \code{onNext} method. This is now the place where the \obv can call \code{request} again to receive more data.
+We recognize these two methods from the Reactive Streams API, where \code{onStart()} was called \code{onSubscribe} and \code{request(n: Long)} was inside the \code{Subscription} interface. Making these slight modifications does not change the intention of the Reactive Streams API: it introduces a feature called \textit{reactive pull} in the \obv to manage the number of elements that are emitted by the upstream \obs.
 
-This method of requesting the upstream to produce more values is called \textit{reactive pull}. It allows the \obv to \emph{pull} from the data source (\obs) at its own pace. RxJava has set up this way of processing data in such a way that under normal circumstances the stream is just push based. Only when the \obv is experiencing backpressure it will switch to this pull based model. Wrapping it up in this way, the problem of backpressure is not prevented or gone away but is rather moved up the chain of operators to a point where it can be handled better. \todo{citation needed: https://github.com/ReactiveX/RxJava/wiki/Backpressure\#reactive-pull-backpressure-isnt-magic}
+Earlier versions of RxJava, who did not have this feature only had the ability to communicate upstream by calling the \code{unsubscribe} method. Recall that when an unsubscribe occurs, the \obs is basically signaled to stop emitting any data to the \obv. Besides unsubscribing there was no way in the standard Rx model to communicate upstream.
 
-With this it limits the number of elements that are in a buffer within certain operators. Using this method, the \code{zip} operator is implemented by using a small buffer for each upstream \obs. It only requests items from one of these sources when there is room for more elements in its buffer. Once all buffers contain at least one element, the operator can remove an element from each buffer, zip these together and push them downstream. After that there is room for at least one extra element in all buffers, hence new requests are sent to the upstream.
+This feature from Reactive Streams allows the \obv to have some more control by \emph{pulling} from the data source (\obs) at its own pace. RxJava is set up in such a way that processing data under normal circumstances is still push based. Only when the \obv is experiencing backpressure it will switch to this pull based model. Wrapping it up in this way, the problem of backpressure is not prevented or gone away but is rather moved up the chain of operators to a point where it can be handled better. \todo{citation needed: https://github.com/ReactiveX/RxJava/wiki/Backpressure\#reactive-pull-backpressure-isnt-magic}
+
+With this it limits the number of elements that are in a buffer within certain operators. Using this new feature, the earlier mentioned \code{zip} operator is implemented by using a small buffer for each \obs. It only requests items from one of these sources when there is room for more elements in its buffer. Once all buffers contain at least one element, the operator can remove an element from each buffer, zip these together and push them downstream. After that there is room for at least one extra element in all buffers, hence new requests are sent to the upstream.
 
 Notice that the RxJava wiki \todo{citation needed} points out that this method only works when all streams that are zipped together respond correctly to the \code{request()} method. This is \emph{not} a requirement for the normal \obs, but it is for instances of \obs that are used in operators like \code{zip} that depend on reactive pull. RxJava therefore provides operators such as \code{onBackpressureBuffer} and \code{onBackpressureDrop} that respectively buffer and drop data that cannot be consumed immediately by the downstream \obv.
-
-\todo{Reactive streams?}
-
-
-
-
-
-
-
-
 
 
 
