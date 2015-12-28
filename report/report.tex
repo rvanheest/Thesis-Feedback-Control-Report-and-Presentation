@@ -2,7 +2,7 @@
 \usepackage[a4paper, hmargin=2.5cm,vmargin=1.5cm]{geometry}
 \usepackage[colorlinks = true]{hyperref}
 \hypersetup{
-  pdftitle    = {Master thesis},
+  pdftitle    = {Master thesis - Feedback on Backpressure},
   pdfauthor   = {Richard van Heest},
   colorlinks  = true,
   linkcolor   = [rgb]{0.1,0.1,0.4},
@@ -13,9 +13,12 @@
 \usepackage{listings}
 \usepackage{color}
 \usepackage{verbatim} % \verb{} for inline code
-\usepackage[numbers,square,super]{natbib} % references as [1,2,3] in superscript
+\usepackage[numbers,square,sort]{natbib} % references as [1,2,3] in superscript -> see also http://merkel.zoneo.net/Latex/natbib.php
 \usepackage{xspace} % put a space after an abbreviation in a newcommand
 \usepackage{amsmath}
+\usepackage{graphicx} % to show images
+\usepackage{float} % places the images at precisely the location in the LaTeX code
+\usepackage[bottom]{footmisc} % fix \footnote{} position at the bottom of the page
 
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{\large @TODO: #1}}}
 \newcommand{\code}[1]{\sloppy{\mbox{\texttt{#1}}}}
@@ -73,5 +76,10 @@
 
 \clearpage
 \input{2.0-hypothesis}
+
+\clearpage
+\phantomsection\addcontentsline{toc}{chapter}{References}
+\bibliographystyle{IEEEtran}
+\bibliography{references}
 
 \end{document}
