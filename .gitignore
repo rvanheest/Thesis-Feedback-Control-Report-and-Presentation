@@ -15,6 +15,9 @@
 /**/bin/
 .cache-main
 .cache-tests
+/**/.tmpBin/
 
 # Maven
 /**/target/
+
+*.url
