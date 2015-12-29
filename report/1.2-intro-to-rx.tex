@@ -149,6 +149,7 @@ Observable(1, 2, 3, 4, 5)		// emits:    1, 2, 3, 4, 5
 Just as the interactive collections, Rx has defined its operators in a way that composition of operators is very easy. In this way, simple operators can be chained in order to create the complex behavior that is often desired. There are many more operators defined on \obs, which are not mentioned in this section. For a full overview, we refer to the documentation on the Rx websites \cite{ReactiveX, Rx.Net}. Some other operators will be discussed in section~\ref{subsec:avoiding-backpressure}. 
 
 \subsection{Different kinds of streams}
+\label{subsec:stream-kinds}
 There are many kinds of observable streams that can all be implemented using Rx. For example, a clock or a timer is basically a stream of `ticks' that emits an element every time unit and therefore has a constant speed. A stream of keyboard events on the other hand emits an element every time a key is pressed and therefore most likely has a very irregular speed. A data stream can also be the result of a database query or a network call. In these instances it might take a certain amount of time before the first result is emitted, but every other result is received almost immediately after the first result appeared.
 
 %\subsubsection*{Finite vs. infinite}
@@ -159,7 +160,7 @@ Some of these data streams, like the database query, are finite and will at a ce
 %\subsubsection*{Hot vs. cold}
 One other difference between certain streams is what happens when one subscribes multiple times to the same stream. Clocks or keyboard events, like broadcasters, emit values whether or not anyone is subscribed. If no one is subscribed, the events are still produced, but are immediately discarded. On the other hand, if multiple observers subscribe to the same stream, they will all receive the same events. This kind of stream is referred to as a \textit{hot} stream.
 
-Some streams, like the \code{Observable.apply(1, 2, 3, 4)} in section~\ref{subsec:core-comps} or the database query, are not considered to be broadcasters. This kind of stream will create a new instance of itself every time an \obv subscribes to it. A second subscriber therefore receives the same result as a first subscriber, even though the second subscribes much later than the first one. This kind of stream is referred to as a \textit{cold} stream.
+Some streams, like the \code{Observable.apply(1, 2, 3, 4)} in section~\ref{subsec:core-comps} or the database query, are not considered to be broadcasters. This kind of stream will create a new instance of itself every time an \obv subscribes to it. A second subscriber therefore receives the same result as a first subscriber, even though the second subscribed much later than the first. This kind of stream is referred to as a \textit{cold} stream.
 
 %A hot stream can be converted to a cold stream by sharing a single subscription with all observers. This can be done by operators like \code{share()} and \code{publish(f: Observable[T] $\Rightarrow$ Observable[S])}.
 
