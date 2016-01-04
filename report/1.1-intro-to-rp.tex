@@ -1,4 +1,5 @@
 \section{Reactive Programming}
+\label{sec:reactive-programming}
 One of the most difficult problems in computer science in this day and age is handling big amounts of data. No longer are applications bound to the closed world of a single machine and a relational database. Applications these days have access the whole World Wide Web, exist of large clusters of machines, work with data ranged from SQL-style relational databases to key-value pointer based databases, as well as binary data such as images, audio and video. Also the speed in which data is handled varies from `once a month' to `every millisecond'.
 
 These changes in how applications need to perform, ask for new ways of handling data. No longer can we allow ourself to load a whole database table into memory for further processing, nor can we permit ourself to wait for all data to be downloaded before we start processing it. We need systems and concepts that can handle data right as it gets pushed to our application, without further delay, preferably in an asynchronous way and without blocking other processes or waiting for all data to have arrived. \cite{meijer2012-YMIAD}
