@@ -20,6 +20,8 @@
 \usepackage{float} % places the images at precisely the location in the LaTeX code
 \usepackage[bottom]{footmisc} % fix \footnote{} position at the bottom of the page
 
+%\usepackage[numbers]{natbib}
+
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{\large @TODO: #1}}}
 \newcommand{\code}[1]{\sloppy{\mbox{\texttt{#1}}}}
 \newcommand{\HRule}{\rule{\textwidth}{0.5mm}}
@@ -102,7 +104,8 @@
 
 \clearpage
 \phantomsection\addcontentsline{toc}{chapter}{References}
-\bibliographystyle{IEEEtran}
+\renewcommand{\bibname}{References}
+\bibliographystyle{acm}
 \bibliography{references}
 
 \end{document}
