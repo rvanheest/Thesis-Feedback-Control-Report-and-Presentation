@@ -1,16 +1,16 @@
 \section{Reactive Extensions}
-There have been many attempts to fit the philosophy of reactive programming into libraries, APIs or even languages \cite{ReactiveX, meijer2015-Dart, Reactive-Streams, Akka, Elm}. \todo{RxMobile} In this section, we will discuss briefly discuss some of the features of one of these libraries, namely Reactive Extensions (a.k.a. Rx). This project started at Microsoft with an implementation in C\# \cite{meijer2010-Observable} (Rx.Net), was later ported to Java, Scala, Groovy, Kotlin, JavaScript, Swift and many other languages by NetFlix with the help of the open-source community and has ever since been ported into dozens of other languages.
+There have been many attempts to fit the philosophy of reactive programming into libraries, APIs or even languages \cite{ReactiveX, meijer2015-Dart, Reactive-Streams, Akka, Elm, RxMobile}. In this section, we will briefly discuss some of the features of one of these libraries, namely Reactive Extensions (a.k.a. Rx). This project started at Microsoft with an implementation in C\# \cite{meijer2010-Observable} (Rx.Net), was later ported to Java, Scala, Groovy, Kotlin, JavaScript, Swift and many other languages by the open source community \cite{ReactiveX}.
 
-However, these translations have deviated a lot from the original implementation. Most remarkable is that some of them are not even purely `reactive' anymore \cite{meijer2014-Derivation}. Given these deviations from the original paradigm and the state of complexity of these implementations, we decided to use a reference implementation of the original Rx that was recently written in Scala by Erik Meijer with the purpose of creating a light-weight implementation for developing mobile apps on Android, called RxMobile. \todo{RxMobile?} The following discussion and derivation of the API will however apply to both Reactive Extensions and RxMobile and in this section we will therefore refer to both as `Rx'.
+However, these translations have deviated a lot from the original implementation. Most remarkable is that some of them are not even purely `reactive' anymore \cite{meijer2014-Derivation}. Given these deviations from the original paradigm and the state of complexity of these implementations, we decided to use a reference implementation of the original Rx that has recently been written in Scala by Erik Meijer called RxMobile \cite{RxMobile}, with the purpose of creating a light-weight implementation for developing mobile apps on Android. The following discussion and derivation of the API will however apply to both Reactive Extensions and RxMobile and in this section we will therefore refer to both as `Rx'.
 
 \subsection{Core components}
 \label{subsec:core-comps}
-Rx is a library for composing asynchronous and event based (reactive) programs by using observable sequences. The core of Rx consists of two interfaces: \obs and \obv. The latter can subscribe and react to the events that are emitted by the former. An \obs can emit zero or more events (called \textit{onNext}) and can possible end with a \textit{onCompleted} or an \textit{onError}. After either a \textit{onCompleted} or an \textit{onError} is emitted, no more events can follow. Therefore the emission protocol can be summarized by the following regular expression: \code{onNext* (onError | onCompleted)?} \cite{MS2010-RxDesign}. When an \obv subscribes to an \obs,  it will return a \subs. With this one can later unsubscribe from the \obs and clean up potential resources.
+Rx is a library for composing asynchronous and event based (reactive) programs by using observable sequences. The core of Rx consists of two interfaces: \obs and \obv. The latter can subscribe and react to the events that are emitted by the former. An \obs can emit zero or more events (called \textit{onNext}) and has the possibility to terminate with an \textit{onCompleted} or \textit{onError} event. After either one of these terminal events is emitted, no more events can follow. Therefore the emission protocol can be summarized by the following regular expression: \code{onNext* (onError | onCompleted)?} \cite{MS2010-RxDesign}. When an \obv subscribes to an \obs,  it will return a \subs. With this object reference, one can later unsubscribe from the \obs and clean up potential resources.
 
 \autoref{lst:obs-obv} shows these basic concepts of the \obs, \obv and \subs translated in Scala. Notice that here \subs is a superclass of \obv. Therefore there is no need for the \obs to return a \subs when an \obv subscribes to it. It will however return a \subs when another variant of \code{subscribe} is used, where for example a lambda expression is expected.
 
 \begin{minipage}{\linewidth}
-\begin{lstlisting}[caption={Observable, Observer and Subscription}, label={lst:obs-obv}]
+\begin{lstlisting}[style=ScalaStyle, caption={Observable, Observer and Subscription}, label={lst:obs-obv}]
 trait Observable[T] {
     def subscribe(observer: Observer[T]): Unit
     def subscribe(onNext: T $\Rightarrow$ Unit): Subscription
@@ -30,19 +30,20 @@ trait Subscription {
 \end{lstlisting}
 \end{minipage}
 
-Creating an \obs is done by the \code{Observable.create(Observer $\Rightarrow$ Unit): Observable} method, that takes a function from \obv to \code{Unit} and returns an \obs. The input function is then used in the implementation of \code{subscribe}, when a \emph{real} \obv is provided. The \obv can be created by supplying it three lambda expressions, one for each kind of event.
+Creating an \obs is done by the \code{Observable.create(Observer $\Rightarrow$ Unit): Observable} method, that takes a lambda expression of type \code{Observer $\Rightarrow$ Unit} and returns an \obs. The input lambda is then used in the implementation of \code{subscribe}, when a \emph{real} \obv is provided. The \obv can be created by supplying it three lambda expressions, one for each kind of event.
 
-\autoref{lst:create-sub-obs} provides a simple example of how both an \obs and \obv are created and used in practice. Here the function in \code{Observable.create} causes the \obs to emit three values and then complete. Notice that these are only emitted after line~\ref{line:subscribe} is executed, when the \obv is subscribed to the \obs! If no one will subscribe, the values will never be produced nor emitted.
+\autoref{lst:create-sub-obs} provides a simple example of how both an \obs and \obv are created and used in practice. Here the function in \code{Observable.create} causes the \obs to emit three values and complete afterwards. Notice that these are only emitted after line~\ref{line:subscribe} is executed, when the \obv is subscribed to the \obs. If no one will subscribe, the values will never be produced nor emitted!
 
 \begin{minipage}{\linewidth}
-\begin{lstlisting}[caption={Creating and subscribing to an \obs}, label={lst:create-sub-obs}]
+\begin{lstlisting}[style=ScalaStyle, caption={Creating and subscribing to an \obs}, label={lst:create-sub-obs}]
 val xs: Observable[Int] $=$ Observable.create((obv: Observer[Int]) $\Rightarrow$ {
     obv.onNext(1)
     obv.onNext(2)
     obv.onNext(3)
     obv.onCompleted()
 })
-val observer: Observer[Int] $=$ Observer((x: Int) $\Rightarrow$ print(x + " "),
+val observer: Observer[Int] $=$ Observer(
+    (x: Int) $\Rightarrow$ print(x + " "),
     (e: Throwable) $\Rightarrow$ print(e),
     () $\Rightarrow$ print("completed"))
 
@@ -52,12 +53,13 @@ xs.subscribe(observer) |\label{line:subscribe}|
 \end{lstlisting}
 \end{minipage}
 
-Using \code{Observable.create} is a very powerful tool to create an \obs. Many other methods can be derived from it. For example, the \obs in \autoref{lst:create-sub-obs} is often written as \code{Observable.apply(1, 2, 3)}\footnote{Notice that in Scala this can be shortened to \code{Observable(1, 2, 3)}. Explicitly writing \code{.apply} is only done for later referral.}. This way of writing is not only more concise and conveys what the true meaning of this expression is in a better way, but it is also exactly the same, since \code{Observable.apply} is implemented in terms of \code{Observable.create}. In fact, all methods that are defined on \obs can be implemented using \code{Observable.create}!
+Using \code{Observable.create} is a very powerful tool to create an \obs. Many other methods can be derived from it. For example, the \obs in \autoref{lst:create-sub-obs} is often written as \code{Observable.apply(1, 2, 3)}\footnote{In Scala this can be shortened to \code{Observable(1, 2, 3)}. Explicitly writing \code{.apply} is only done for later referral.}. This way of writing is not only more concise and conveys what the true meaning of this expression is in a better way, but it is also exactly the same, since \code{Observable.apply} is implemented in terms of \code{Observable.create}. In fact, all methods that are defined on \obs can be implemented using \code{Observable.create}!
 
 \subsection{Derivation of \obs and \obv}
-In 1994, the book `Design Patterns: Elements of Reusable Object-Oriented Software' by the \textit{Gang of Four} was published \cite{gamma1994-DesignPatternsGOF}. This book explored the capabilities and pitfalls of object oriented programming and contained an overview of 23 classical software design patterns. Also, the book described the relationships between these 23 design patterns.
+\label{subsec:derivation}
+In 1994, the book `\textit{Design Patterns: Elements of Reusable Object-Oriented Software}' by the \textit{Gang of Four} was published \cite{gamma1994-DesignPatternsGOF}. This book explored the capabilities and pitfalls of object oriented programming and contained an overview of 23 classical software design patterns. Also, the book described the relationships between these 23 design patterns.
 
-One of these design patterns is called the \textit{Observer} pattern and forms the basis of the \obs and \obv interfaces described in the previous subsection. Even though the Gang of Four did identify a lot of relations between the different design patterns, it failed to identify any relation between the Observer pattern and any other pattern, except for the Mediator pattern.
+One of these design patterns is called the \textit{Observer} pattern and forms the basis of the \obs and \obv interfaces described in the previous section. Even though the Gang of Four did identify a lot of relations between the different design patterns, it failed to identify any relation between the Observer pattern and any other pattern, except for the Mediator pattern.
 
 \begin{figure}[H]
 	\begin{center}
@@ -67,46 +69,51 @@ One of these design patterns is called the \textit{Observer} pattern and forms t
 	\caption{Relations between design patterns according to \cite{gamma1994-DesignPatternsGOF}}
 \end{figure}
 
-In 2010, Erik Meijer published a short paper called `Subject/Observer is Dual to Iterator' \cite{meijer2010-Observable}, where he described a mathematical relationship between the Observer pattern and the Iterator pattern based on categorical duality. The paper shows that instances of the Observer pattern can be viewed as push-based collections, rather than the pull-based collections that result from the Iterator pattern. For later parts of this thesis, it is important to understand the mathematical basis of this relationship between the \obs and \obv interfaces and the \itb and \itr interfaces.
+In 2010, Erik Meijer published a short paper called `\textit{Subject/Observer is Dual to Iterator}' \cite{meijer2010-Observable}, where he described a mathematical relationship between the Observer pattern and the Iterator pattern based on categorical duality. The paper shows that instances of the Observer pattern can be viewed as push-based collections, rather than the pull-based collections that result from the Iterator pattern. For later parts of this thesis, it is important to understand the mathematical basis of this relationship between the \obs and \obv interfaces in Rx and the \ieb and \ier interfaces in the Iterator pattern\footnote{For the purpose of the upcoming derivation we have chosen the C\# naming conventions of the Iterator pattern. In other programming languages these interfaces are respectively known as \code{Iterable} and \code{Iterator}.} (see \autoref{lst:itb-itr}).
 
-The Iterator pattern consists of two interfaces, called \itb and \itr. (see \autoref{lst:itb-itr}) In most common languages \itb forms the basis of every Collections API. It has only one method \code{iterator} that returns the \itr to iterate over the elements in the collection. The \itr interface on the other hand contains two methods to be implemented: \code{moveNext} and \code{current}. The former performs a side effect by moving a pointer to the next element in the iteration and then returns a \code{Boolean} to indicate whether or not there was a next element. The latter is a pure function that just returns the element the pointer is currently pointing to\footnote{The \itr interface can be written in different ways. For example, Java provides two methods \code{hasNext} and \code{next}. Here the former is considered to be a pure function and the latter performs the side-effect of moving the pointer.}. Notice that the \code{moveNext} method can throw an exception rather than returning \code{false} in case an error occurs.
+In most common languages \ieb forms the basis of the Collections API. It has only one method \code{getEnumerator} that returns the \ier to iterate over the elements in the collection. The \ier interface on the other hand contains two methods to be implemented: \code{moveNext} and \code{current}. The former performs a side effect by moving a pointer to the next element in the iteration and then returns a \code{Boolean} to indicate whether or not there was a next element. The latter is a pure function that just returns the element the pointer is currently pointing to. Notice that the \code{moveNext} method can throw an exception rather than returning \code{false} in case an error occurs.
+
+Besides providing these two methods, \ier in \autoref{lst:itb-itr} also extends the \id interface. This interface is meant to signal to the \ieb that no more elements will be pulled and that it can `start collaborating' with the garbage collector to clean up resources. The real meaning of \ier extending \id however, is that \code{getEnumerator} not only returns an \ier, but also returns something that is disposable. The \id interface is therefore not really part of \ier but rather a part of what \code{getEnumerator} returns \cite{E2E-Rx}. For now we will consider \id to be a silent bystander that is will be ignored in the derivation.
 
 \begin{minipage}{\linewidth}
-\begin{lstlisting}[caption={\itb and \itr interfaces}, label={lst:itb-itr}]
-trait Iterable[T] {
-    def iterator(): Iterator[T]
+\begin{lstlisting}[style=ScalaStyle, caption={\ieb and \ier interfaces}, label={lst:itb-itr}]
+trait IEnumerable[T] {
+    def getEnumerator(): IEnumerator[T]
 }
-trait Iterator[T] {
+trait IEnumerator[T] extends IDisposable {
     def moveNext(): Boolean // throws Exception
     def current: T
+}
+trait IDisplosable {
+    def dispose(): Unit
 }
 \end{lstlisting}
 \end{minipage}
 
-These two interfaces together form the basis of all pull-based or interactive collections. The user asks for the next element and will get one in case a next element can be produced. In the following we will transform these interfaces into push-based or reactive collection, where the user subscribes to a collection and receives data once it is produced. This derivation, as well as its conclusion that interactive and reactive collections are each other's dual, is based on some categorical transformations and are discussed in several papers, as well as several keynotes and Channel9 video's \cite{meijer2010-Observable, meijer2012-YMIAD, E2E-Rx, meijer2014-Duality-And-The-End-Of-Reactive}. This derivation, as well as it's intermediate steps are important for later parts of this thesis.
+These two interfaces together form the basis of all pull-based or interactive collections as described in \autoref{sec:reactive-programming}. The user asks for the next element and will (eventually) get one in case a next element can be produced. In the following we will transform these interfaces for pull-based collections into interfaces for push-based or reactive collection, where the user subscribes to a collection and receives data once it is produced. This derivation, as well as its conclusion that interactive and reactive collections are each other's dual, is based on some categorical transformations and are discussed in several papers, as well as several keynotes and Channel9 video's \cite{meijer2010-Observable, meijer2012-YMIAD, E2E-Rx, meijer2014-Duality-And-The-End-Of-Reactive}. This derivation, as well as some of the intermediate steps are important for later parts of this thesis.
 
-The first step in this derivation is to rewrite the two methods in the \itr interface into a single method \code{getNext()}. Using the categorical \textit{coproduct} \cite{rydeheard1988-Category-Theory} we can combine these two methods and determine its type signature: \code{getNext()} can either fail with an exception or succeed with either an element or no element, resulting in the type signature \code{getNext(): Try[Option[T]]}. The new, intermediate, set of interfaces is shown in \autoref{lst:itb-itr-interm}.
+The first step in this derivation is to rewrite the two methods in the \ier interface into a single method \code{getNext()}. Using the categorical \textit{coproduct} \cite{rydeheard1988-Category-Theory} we can combine these two methods and determine its type signature: \code{getNext()} can either fail with an exception or succeed with either an element or no element, resulting in the type signature \code{getNext(): Try[Option[T]]}. The new, intermediate, set of interfaces is shown in \autoref{lst:itb-itr-interm}.
 
 \begin{minipage}{\linewidth}
-\begin{lstlisting}[caption={\itr interface after applying coproduct}, label={lst:itb-itr-interm}]
-trait Iterable[T] {
-    def iterator(): Iterator[T]
+\begin{lstlisting}[style=ScalaStyle, caption={\ier interface after applying coproduct}, label={lst:itb-itr-interm}]
+trait IEnumerable[T] {
+    def getEnumerator(): IEnumerator[T]
 }
-trait Iterator[T] {
+trait IEnumerator[T] {
     def getNext(): Try[Option[T]]
 }
 \end{lstlisting}
 \end{minipage}
 
-Since both interfaces now only have one single method, and since the only purpose of \itb is to produce an \itr, they can be written as a single lambda expression. An \itb can be written as:
+Since both interfaces now only have one single method, and given that the only purpose of \ieb is to produce an \ier, they can be written as a single lambda expression. An \ieb can be written as:
 
 \begin{equation} \label{eq:itb}
 \code{() $\Rightarrow$ (() $\Rightarrow$ Try[Option[T]])}
 \end{equation}
 
-Notice that applying \code{Unit} to the outer lambda yields another lambda expression, which corresponds to the interface for \itr in \autoref{lst:itb-itr-interm}: \code{() $\Rightarrow$ Try[Option[T]]}.
+Notice that applying \code{Unit} to the outer lambda yields another lambda expression, which corresponds to the type signature of \code{getNext} in \autoref{lst:itb-itr-interm}: \code{() $\Rightarrow$ Try[Option[T]]}.
 
-The next step this transformation is to dualize this lambda expression \cite{rydeheard1988-Category-Theory}. A very informal way of describing duality is to flip all the arrows and rewrite the lambda expression. For example, the duality of $f :: A \rightarrow B$ is $\bar{f} :: A \leftarrow B \equiv B \rightarrow A$. In the same way, we can apply this to lambda~expression~\ref{eq:itb}, resulting in
+The next step in this transformation is to dualize \cite{rydeheard1988-Category-Theory} lambda~expression~\ref{eq:itb}. A very informal way of describing duality is to flip all the arrows and rewrite the lambda expression. For example, the duality of $f :: A \rightarrow B$ is $\bar{f} :: A \leftarrow B \equiv B \rightarrow A$. In the same way, we can apply this to lambda~expression~\ref{eq:itb}, resulting in
 
 \begin{equation} \label{eq:obs}
 \code{(Try[Option[T]] $\Rightarrow$ ()) $\Rightarrow$ ()}
@@ -114,15 +121,61 @@ The next step this transformation is to dualize this lambda expression \cite{ryd
 
 This lambda expression takes a lambda from \code{Try[Option[T]]} to \code{Unit}, and returns \code{Unit}.
 
-We can now put this lambda expression back into context by splitting it into two interfaces. The inner lambda can be rewritten to an interface called \obv, which has one method \code{onNext(t: Try[Option[T]]): Unit}. This method can then be further rewritten into three separate methods by expanding the \code{Try[Option[T]]} type: \code{onNext(t: T): Unit}, \code{onError(e: Throwable): Unit} and \code{onCompleted(): Unit}. The outer lambda on the other hand translates to an interface called \obs, which has one method \code{subscribe(obv: Observer[T]): Unit}. Notice how these interfaces are completely identical to the ones presented in \autoref{lst:obs-obv}.
+We can now put this lambda expression back into context by splitting it into two interfaces. The inner lambda \code{Try[Option[T]] $\Rightarrow$ ()} can be rewritten to an interface called \obv, which has one method \code{onNext(t: Try[Option[T]]): Unit}. This method can then be further rewritten into three separate methods by expanding the \code{Try[Option[T]]} type: \code{onNext(t: T): Unit}, \code{onError(e: Throwable): Unit} and \code{onCompleted(): Unit}. The outer lambda on the other hand translates to an interface called \obs, which has one method \code{subscribe(obv: Observer[T]): Unit}. Notice how these interfaces are completely identical to the ones presented in \autoref{lst:obs-obv}.
 
-This derivation shows that interactive, pull-based collections are the mathematical dual of reactive, push-based collections. The \obs and \obv interfaces can directly be derived from the \itb and \itr interfaces. Both sets of interfaces can therefore be considered to be collections. In other words: streaming data behaves exactly the same way as regular collections, such as arrays, lists and sets, except for them being push-based rather than pull-based \cite{meijer2012-YMIAD, meijer2010-Observable}. In the world of push-based collections one \emph{subscribes} to the stream in order to \emph{react} to the next element that is being send, whereas one \emph{asks} for the next element in a pull-based scenario.
+%So far the presence of \id has been ignored in this derivation. This interface can however be found in \autoref{lst:obs-obv}, renamed as \subs. \todo{Add a couple of words on the functionality of \id and \subs and how they are the same.}
+
+So far, the presence of \id has been ignored in this whole derivation. The reason for that is that this interface is considered to be a \emph{second} thing that is returned by the \ieb, rather than a supertype of \ier. What therefore basically happened in the derivation is that we only dualized the enumerator\textit{ness} and left the disposable\textit{ness} out of the dualization process \cite{E2E-Rx}. Therefore the dualized \ier, now called \obv, still extends from \id, even though this only means that we pass \textit{two} arguments to the \code{Observable.subscribe(obv: Observer)}. Just as the \id was meant to signal to the \ieb that no more elements will be polled and that it can clean up its resources, now \id signals to the \obs that it should stop sending data to the \obv. Finally, \id is renamed to \subs and its method \code{dispose} is split into two methods \code{unsubscribe} and \code{isUnsubscribed}.
+
+% really dualized the enumeratorNESS but not the disposableNESS
+% \ieb returned \ier AND \id
+% now we dualized the enumeratorNESS, \id remained, so we need to return \id in \obs instead of void
+% so when we subscribe to an \obs with an \obv, we get back a \id to unsubscribe later
+
+This derivation shows that interactive, pull-based collections are the mathematical dual of reactive, push-based collections. The \obs and \obv interfaces can directly be derived from the \ieb and \ier interfaces. Both sets of interfaces can therefore be considered to be collections. In other words: streaming data behaves exactly the same way as regular collections, such as arrays, lists and sets, except for them being push-based rather than pull-based \cite{meijer2012-YMIAD, meijer2010-Observable}. In the world of push-based collections one \emph{subscribes} to the stream in order to \emph{react} to the next element that is being send, whereas one \emph{asks} for the next element in a pull-based scenario.
+
+\subsection{\obs as a monad}
+\label{subsec:obs-monad}
+As described in the previous section, \obs can also be written as lambda~expression~\ref{eq:obs}. A better look at this expression reveals that \obs is actually a special instance of the \textit{continuation monad}, which has the following type:
+
+\begin{equation} \label{eq:cont}
+\code{(S $\Rightarrow$ R) $\Rightarrow$ R}
+\end{equation}
+
+In the \obs lambda expression, \code{S} is equal to \code{Try[Option[T]]} and \code{R} is equal to \code{()} or \code{Unit}.
+
+Given that \obs is just a special instance of the continuation monad, it automatically has the two operators that are defined on all monads:
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=HaskellStyle, caption={\obs as monad (in Haskell)}, label={lst:obs-monad}]
+instance Monad Observable where
+    return :: Try[Option[T]] $\rightarrow$ Observable[T]
+    return t = \c $\rightarrow$ c t
+
+    (>>=) :: Observable[T] $\rightarrow$ (Try[Option[T]] $\rightarrow$ Observable[S]) $\rightarrow$ Observable[S]
+    obs >>= f = \s2n $\rightarrow$ obs ((flip f) s2n)
+\end{lstlisting}
+\end{minipage}
+
+In the Rx implementation, these operators are present as well. The \code{return} creates an \obs from a \code{Try[Option[T]]}, meaning that it accepts either an error, or an empty value, or a non-empty value. Therefore \code{return} is split into three operators \code{apply(t: T)}, \code{error(e: Throwable)} and \code{empty()}. Since an \obs can have multiple values, \code{apply} is overloaded to have more than one value. This overload was already shown in section~\ref{subsec:core-comps} The \code{(>>=)} operator is renamed to \code{flatMap} and also splits the \code{Try[Option[T]]} parameter into three separate parameters \cite{rx-api}. Besides that, since the \code{T $\Rightarrow$ Observable[S]} parameter is used most frequently, the \code{flatMap} operator is overloaded with only this parameter.
+
+A simple example of using these monadic operators in Rx is shown in \autoref{lst:monad-in-rx}. On line~\ref{line:return} the overloaded \code{apply} is called, which lifts four values into the \obs. The \code{flatMap} operator on line~\ref{line:flatMap} doubles the number of elements by creating an \obs that emits the value as well as the square of the value.
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={Monad operators in Rx}, label={lst:monad-in-rx}]
+Observable(1, 2, 3, 4) |\label{line:return}|
+    .flatMap(x $\Rightarrow$ Observable(x, x * x)) |\label{line:flatMap}|
+    .subscribe(x $\Rightarrow$ print(x + " "))
+
+// result: 1 1 2 4 3 9 4 16
+\end{lstlisting}
+\end{minipage}
 
 \subsection{Operators}
 \label{subsec:operators}
-Besides this difference between push-based and pull-based collections, all other rules apply for both of them. In regular pull-based collections many operators are defined to manipulate, transform, filter, fold or group elements. These operators can therefore also be applied to push-based collections. However, rather than iterating over the collection and applying the transformation on each element, these operators \emph{react} to data being emitted by applying their particular transformation or side effect and passing the (transformed) data down to either a potential next operator or the \code{subscribe} method.
+In section~\ref{subsec:derivation} we concluded that both the Iterator pattern and the Observer pattern are collections, only separated by the difference between push-based and pull-based behavior. All other rules on collections do however apply to both of them. In regular pull-based collections many operators are defined to manipulate, transform, filter, fold or group elements. These operators can therefore also be applied to push-based collections. One of them, \code{flatMap} was already shown in the previous section. However, rather than iterating over the pull-based collection and applying a transformation to each element, these operators \emph{react} to data being emitted by applying their particular transformation or side effect and passing the (transformed) data down to either a potential next operator or the \code{subscribe} method.
 
-The Rx implementations of the \obs interface provide a wide variety of operators that apply all sorts of transformations to a data stream. All operators are defined on \obs and will also return an \obs, making the API highly compositional. In order to understand how these operators work, we will look at some basic examples. Other, more advanced operators will be discussed in section~\ref{subsec:avoiding-backpressure}.
+The Rx implementations of the \obs interface provide a wide variety of operators that apply all sorts of transformations to a data stream \cite{rx-api}. All operators are defined on \obs and will also return an \obs, making the API highly compositional. In order to understand how these operators work, we will look at some basic examples. Other, more advanced operators will be discussed in section~\ref{subsec:avoiding-congestion}.
 
 \paragraph{Filter}To select only those elements that satisfy a certain predicate, the operator \code{filter(p: T $\Rightarrow$ Boolean): Observable[T]} is used. Every time an element is received by this operator, the predicate \code{p} will be applied. If the element satisfies the predicate, it is passed downstream; otherwise the element will be discarded. \autoref{lst:operators-obs} shows in line~\ref{line:filter} how to select the odd numbers in a stream of integers by supplying a predicate.
 
@@ -135,9 +188,9 @@ The Rx implementations of the \obs interface provide a wide variety of operators
 \paragraph{Take}Whereas \code{drop} discards the first \code{n} elements, \code{take(n: Int): Observable[T]} is used to only propagate the first \code{n} elements and discard all elements that come after that. In practice this means that the stream is terminated early with a call to \code{Observer.onCompleted()}. \autoref{lst:operators-obs} shows how \code{take} is used to only propagate the first and the second element and discard the third.
 
 \begin{minipage}{\linewidth}
-\begin{lstlisting}[caption={Operators on \obs}, label={lst:operators-obs}, columns=fixed]
-Observable(1, 2, 3, 4, 5)		// emits:    1, 2, 3, 4, 5
-    .filter(x $\Rightarrow$ x $\%$ 2 $==$ 1)			// emits:    1,    3,    5 |\label{line:filter}|
+\begin{lstlisting}[style=ScalaStyle, caption={Operators on \obs}, label={lst:operators-obs}, columns=fixed]
+Observable(1, 2, 3, 4, 5)		// emits:    1, 2, 3, 4,  5
+    .filter(x $\Rightarrow$ x $\%$ 2 $==$ 1)			// emits:    1,    3,     5 |\label{line:filter}|
     .map(x $\Rightarrow$ x * 2)			// emits:    2,    6,    10 |\label{line:map}|
     .scan(0)((sum, x) => sum + x)	// emits: 0, 2,    8,    18 |\label{line:scan}|
     .drop(1)				// emits:    2,    8,    18 |\label{line:drop}|
@@ -146,7 +199,7 @@ Observable(1, 2, 3, 4, 5)		// emits:    1, 2, 3, 4, 5
 \end{lstlisting}
 \end{minipage}
 
-Just as the interactive collections, Rx has defined its operators in a way that composition of operators is very easy. In this way, simple operators can be chained in order to create the complex behavior that is often desired. There are many more operators defined on \obs, which are not mentioned in this section. For a full overview, we refer to the documentation on the Rx websites \cite{ReactiveX, Rx.Net}. Some other operators will be discussed in section~\ref{subsec:avoiding-backpressure}. 
+Just as the interactive collections, Rx has defined its operators in a way that composition of operators is very easy. In this way, simple operators can be chained in order to create the complex behavior that is often desired. There are many more operators defined on \obs, which are not mentioned in this section. For a full overview, we refer to the documentation on the Rx websites \cite{ReactiveX, rx-api, Rx.Net}.
 
 \subsection{Different kinds of streams}
 There are many kinds of observable streams that can all be implemented using Rx. For example, a clock or a timer is basically a stream of `ticks' that emits an element every time unit and therefore has a constant speed. A stream of keyboard events on the other hand emits an element every time a key is pressed and therefore most likely has a very irregular speed. A data stream can also be the result of a database query or a network call. In these instances it might take a certain amount of time before the first result is emitted, but every other result is received almost immediately after the first result appeared.
@@ -159,7 +212,7 @@ Some of these data streams, like the database query, are finite and will at a ce
 %\subsubsection*{Hot vs. cold}
 One other difference between certain streams is what happens when one subscribes multiple times to the same stream. Clocks or keyboard events, like broadcasters, emit values whether or not anyone is subscribed. If no one is subscribed, the events are still produced, but are immediately discarded. On the other hand, if multiple observers subscribe to the same stream, they will all receive the same events. This kind of stream is referred to as a \textit{hot} stream.
 
-Some streams, like the \code{Observable.apply(1, 2, 3, 4)} in section~\ref{subsec:core-comps} or the database query, are not considered to be broadcasters. This kind of stream will create a new instance of itself every time an \obv subscribes to it. A second subscriber therefore receives the same result as a first subscriber, even though the second subscribes much later than the first one. This kind of stream is referred to as a \textit{cold} stream.
+Some streams, like the \code{Observable(1, 2, 3, 4)} in section~\ref{subsec:core-comps}~and~\ref{subsec:obs-monad} or the database query, are not considered to be broadcasters. This kind of stream will create a new instance of itself every time an \obv subscribes to it. A second subscriber therefore receives the same result as a first subscriber, even though the second subscribes much later than the first one. This kind of stream is referred to as a \textit{cold} stream.
 
 %A hot stream can be converted to a cold stream by sharing a single subscription with all observers. This can be done by operators like \code{share()} and \code{publish(f: Observable[T] $\Rightarrow$ Observable[S])}.
 
