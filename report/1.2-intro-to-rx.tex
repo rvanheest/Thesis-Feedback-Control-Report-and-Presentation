@@ -73,7 +73,7 @@ In 2010, Erik Meijer published a short paper called `\textit{Subject/Observer is
 
 In most common languages \ieb forms the basis of the Collections API. It has only one method \code{getEnumerator} that returns the \ier to iterate over the elements in the collection. The \ier interface on the other hand contains two methods to be implemented: \code{moveNext} and \code{current}. The former performs a side effect by moving a pointer to the next element in the iteration and then returns a \code{Boolean} to indicate whether or not there was a next element. The latter is a pure function that just returns the element the pointer is currently pointing to. Notice that the \code{moveNext} method can throw an exception rather than returning \code{false} in case an error occurs.
 
-Besides providing these two methods, \ier in \autoref{lst:itb-itr} also extends the \id interface. This really means that \code{getEnumerator} not only returns an \ier, but also returns something that is disposable \cite{E2E-Rx}. The \id interface is therefore not really part of \ier but rather a part of what \code{getEnumerator} returns. \todo{an extra sentence of what \id does here; ask Mike on Wednesday, based on \cite{E2E-Rx} 37:26.} For now we will consider \id to be a silent bystander that is will be ignored in the derivation.
+Besides providing these two methods, \ier in \autoref{lst:itb-itr} also extends the \id interface. This interface is meant to signal to the \ieb that no more elements will be pulled and that it can `start collaborating' with the garbage collector to clean up resources. The real meaning of \ier extending \id however, is that \code{getEnumerator} not only returns an \ier, but also returns something that is disposable. The \id interface is therefore not really part of \ier but rather a part of what \code{getEnumerator} returns \cite{E2E-Rx}. For now we will consider \id to be a silent bystander that is will be ignored in the derivation.
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={\ieb and \ier interfaces}, label={lst:itb-itr}]
@@ -83,6 +83,9 @@ trait IEnumerable[T] {
 trait IEnumerator[T] extends IDisposable {
     def moveNext(): Boolean // throws Exception
     def current: T
+}
+trait IDisplosable {
+    def dispose(): Unit
 }
 \end{lstlisting}
 \end{minipage}
@@ -120,7 +123,14 @@ This lambda expression takes a lambda from \code{Try[Option[T]]} to \code{Unit},
 
 We can now put this lambda expression back into context by splitting it into two interfaces. The inner lambda \code{Try[Option[T]] $\Rightarrow$ ()} can be rewritten to an interface called \obv, which has one method \code{onNext(t: Try[Option[T]]): Unit}. This method can then be further rewritten into three separate methods by expanding the \code{Try[Option[T]]} type: \code{onNext(t: T): Unit}, \code{onError(e: Throwable): Unit} and \code{onCompleted(): Unit}. The outer lambda on the other hand translates to an interface called \obs, which has one method \code{subscribe(obv: Observer[T]): Unit}. Notice how these interfaces are completely identical to the ones presented in \autoref{lst:obs-obv}.
 
-So far the presence of \id has been ignored in this derivation. This interface can however be found in \autoref{lst:obs-obv}, renamed as \subs. \todo{Add a couple of words on the functionality of \id and \subs and how they are the same.}
+%So far the presence of \id has been ignored in this derivation. This interface can however be found in \autoref{lst:obs-obv}, renamed as \subs. \todo{Add a couple of words on the functionality of \id and \subs and how they are the same.}
+
+So far, the presence of \id has been ignored in this whole derivation. The reason for that is that this interface is considered to be a \emph{second} thing that is returned by the \ieb, rather than a supertype of \ier. What therefore basically happened in the derivation is that we only dualized the enumerator\textit{ness} and left the disposable\textit{ness} out of the dualization process \cite{E2E-Rx}. Therefore the dualized \ier, now called \obv, still extends from \id, even though this only means that we pass \textit{two} arguments to the \code{Observable.subscribe(obv: Observer)}. Just as the \id was meant to signal to the \ieb that no more elements will be polled and that it can clean up its resources, now \id signals to the \obs that it should stop sending data to the \obv. Finally, \id is renamed to \subs and its method \code{dispose} is split into two methods \code{unsubscribe} and \code{isUnsubscribed}.
+
+% really dualized the enumeratorNESS but not the disposableNESS
+% \ieb returned \ier AND \id
+% now we dualized the enumeratorNESS, \id remained, so we need to return \id in \obs instead of void
+% so when we subscribe to an \obs with an \obv, we get back a \id to unsubscribe later
 
 This derivation shows that interactive, pull-based collections are the mathematical dual of reactive, push-based collections. The \obs and \obv interfaces can directly be derived from the \ieb and \ier interfaces. Both sets of interfaces can therefore be considered to be collections. In other words: streaming data behaves exactly the same way as regular collections, such as arrays, lists and sets, except for them being push-based rather than pull-based \cite{meijer2012-YMIAD, meijer2010-Observable}. In the world of push-based collections one \emph{subscribes} to the stream in order to \emph{react} to the next element that is being send, whereas one \emph{asks} for the next element in a pull-based scenario.
 
@@ -137,12 +147,13 @@ In the \obs lambda expression, \code{S} is equal to \code{Try[Option[T]]} and \c
 Given that \obs is just a special instance of the continuation monad, it automatically has the two operators that are defined on all monads:
 
 \begin{minipage}{\linewidth}
-\begin{lstlisting}[style=HaskellStyle, caption={\obs as monad}, label={lst:obs-monad}]
-return :: Try[Option[T]] $\rightarrow$ Observable[T]
-return t = \c $\rightarrow$ c t
+\begin{lstlisting}[style=HaskellStyle, caption={\obs as monad (in Haskell)}, label={lst:obs-monad}]
+instance Monad Observable where
+    return :: Try[Option[T]] $\rightarrow$ Observable[T]
+    return t = \c $\rightarrow$ c t
 
-(>>=) :: Observable[T] $\rightarrow$ (Try[Option[T]] $\rightarrow$ Observable[S]) $\rightarrow$ Observable[S]
-obs >>= f = \s2n $\rightarrow$ obs ((flip f) s2n)
+    (>>=) :: Observable[T] $\rightarrow$ (Try[Option[T]] $\rightarrow$ Observable[S]) $\rightarrow$ Observable[S]
+    obs >>= f = \s2n $\rightarrow$ obs ((flip f) s2n)
 \end{lstlisting}
 \end{minipage}
 
