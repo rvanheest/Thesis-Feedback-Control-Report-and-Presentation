@@ -8,7 +8,7 @@ A classic example of overproducing observables is the \code{zip} operator, which
 Ever expanding buffers is common answer to overproducing observables. A fast emitting stream is draining its data into a buffer and the much slower \obv eventually takes the data out of the buffer. The major problem with this solution (and thus with the implementation of \code{zip} as described above) is that the buffer will have to use an unwieldy amount of system resources.
 
 \subsection{Avoiding overproduction}
-\label{subsec:avoiding-congestion}
+\label{subsec:avoiding-overproduction}
 One way of dealing with overproducing observables is to simply avoid the problem and take proactive measures whenever it is expected happen. In the following we will discuss several ways to reduce the amount of data by using standard operators that are defined on the \obs interface. For this we distinguish two types of operators: lossy and lossless operators \cite{Backpressure-Explained}.
 
 \subsubsection{Lossy operators}
