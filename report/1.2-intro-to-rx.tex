@@ -194,7 +194,7 @@ The Rx implementations of the \obs interface provide a wide variety of operators
 Observable(1, 2, 3, 4, 5)		// emits:    1, 2, 3, 4,  5
     .filter(x $\Rightarrow$ x $\%$ 2 $==$ 1)			// emits:    1,    3,     5 |\label{line:filter}|
     .map(x $\Rightarrow$ x * 2)			// emits:    2,    6,    10 |\label{line:map}|
-    .scan(0)((sum, x) => sum + x)	// emits: 0, 2,    8,    18 |\label{line:scan}|
+    .scan(0)((sum, x) $\Rightarrow$ sum + x)		// emits: 0, 2,    8,    18 |\label{line:scan}|
     .drop(1)				// emits:    2,    8,    18 |\label{line:drop}|
     .take(2)				// emits:    2,    8 |\label{line:take}|
     .subscribe(x $\Rightarrow$ println(x))
@@ -236,10 +236,10 @@ The first operator, called \code{observeOn(sch: Scheduler)}, propagates its rece
 One common use case of this operator is found in developing applications with a user interface (UI). When a textfield exposes an \obs of keyboard events, we may safely assume that it runs on the UI thread. The content of this textfield is transformed into a query, which is send of to a database, where it will collect and return a certain result set. While the database is processing the query, we do not want to block the UI thread, but rather keep that thread available for other, UI related processes. In this case it very useful to execute the database query on a different thread. For this purpose, RxJava provides a special IO \sch that is completely optimized for its cause. Once the result of the database query is received, a UI update needs to happen for the result to be shown. This can only be done from within the UI thread, hence the \obs needs to be switched back to that \sch using the \code{observeOn} operator.
 
 \begin{minipage}{\linewidth}
-\begin{lstlisting}[style=ScalaStyle, caption={\code{observeOn} in a Rx sequence}, label={lst:observeOn}, columns=fixed]
+\begin{lstlisting}[style=ScalaStyle, caption={\code{observeOn} in a Rx sequence}, label={lst:observeOn}]
 Observable(1, 2, 3, 4)			// main thread
     .map(i $\Rightarrow$ 2 * i)			// main thread
-    .observeOn(new NewThreadScheduler)
+    .observeOn(new NewThreadScheduler) |\label{line:observeOn-in-observeOn}|
     .map(i $\Rightarrow$ i / 2)			// thread 2
     .subscribe(i $\Rightarrow$ print(i + " "))	// thread 2
 \end{lstlisting}
@@ -248,13 +248,13 @@ Observable(1, 2, 3, 4)			// main thread
 Something that is not possible with the \code{observeOn} operator is to schedule an \obs \textit{source} a different thread. For this purpose the \code{subscribeOn(sch: Scheduler)} is also part of the Rx API. This operator schedulers creation of all values within the source on the associated scheduler and also performs all operations on that \obs on the same \sch until a potential other \sch is encountered in the sequence of operator. This is described in \autoref{lst:subscribeOn}, where the creation of the values within \code{Observable.apply} is scheduled on a new thread. Compare this to \autoref{lst:observeOn}, where this was done on the application's main thread. Also the first \code{map} operation in \autoref{lst:subscribeOn} is performed on that same thread. When on line~\ref{line:observeOn-in-subscribeOn} the \code{observeOn} is encountered, the received data is rescheduled to a second thread.
 
 \begin{minipage}{\linewidth}
-\begin{lstlisting}[style=ScalaStyle, caption={\code{subscribeOn} in a Rx sequence}, label={lst:subscribeOn}, columns=fixed]
+\begin{lstlisting}[style=ScalaStyle, caption={\code{subscribeOn} in a Rx sequence}, label={lst:subscribeOn}]
 Observable(1, 2, 3, 4)			// thread 1
     .subscribeOn(new NewThreadScheduler)
-    .map(i => 2 * i)			// thread 1
+    .map(i $\Rightarrow$ 2 * i)			// thread 1
     .observeOn(new NewThreadScheduler) |\label{line:observeOn-in-subscribeOn}|
-    .map(i => i / 2)			// thread 2
-    .subscribe(i => print(i + " "))	// thread 2
+    .map(i $\Rightarrow$ i / 2)			// thread 2
+    .subscribe(i $\Rightarrow$ print(i + " "))	// thread 2
 \end{lstlisting}
 \end{minipage}
 
