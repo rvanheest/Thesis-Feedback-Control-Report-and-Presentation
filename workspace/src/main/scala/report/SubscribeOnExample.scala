@@ -11,7 +11,7 @@ object SubscribeOnExample extends App {
 		.map(i => 2 * i)					// thread 1
 		.observeOn(new NewThreadScheduler)
 		.map(i => i / 2)					// thread 2
-		.subscribe(i => print(i + " "))	// thread 2
+		.subscribe(i => print(i + " "))		// thread 2
 
 	StdIn.readLine()
 }
