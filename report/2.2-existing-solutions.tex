@@ -1,10 +1,12 @@
 \section{Reflecting on existing solutions}
+\todo{rename to: ``Exploring the problem space of overproducing sources'' or something like that}
+
 In the previous chapter we described an interesting problem that occurs when working with streaming data and reactive programming: ``\textit{what happens when the consumer cannot handle the data flow presented by the producer?}''. We also presented a number of solutions, ranging from putting data in an overflow buffer to gaining more control over the \obs. Some of these solutions work perfect under certain conditions, others do not. In this section we will discuss the solutions that were described in section~\ref{sec:fastproc-slowcons} in further detail and reflect on them in the light of the previous section on hot and cold streams.
 
 \subsection{Avoiding overproduction}
 As described in section~\ref{subsec:avoiding-overproduction}, \textit{avoiding} is a first line of defense for overproduction. This was done by introducing several operators that either drop some of the data or buffer the data and propagating these buffers downstream for further manipulation. All lossy operators, as well as the \code{buffer} with interval, require a \sch for them to run their interval timers on, hence the output stream of these operators runs on a different thread.
 
-For a hot \obs this kind of defense mechanism is perfect, as the speed at which the source is producing is unknown. This also holds for the cold \obs with latency, as the production of elements is also bound to a notion of time. For other cold streams, like \code{Observable(1, 2, 3, 4)} or an \obs that is created from a list of elements as shown in \autoref{lst:obs-from-seq}, it does not make any sense to add any overproduction-avoiding operators, as this kind of stream is sequential and will in fact emit at a rate which is determined by the \obv.
+For a hot \obs this kind of defense mechanism is perfect, as the speed at which the source is producing is unknown. This also holds for the cold with-latency \obs, as the production of elements is also bound to a notion of time. For other cold streams, like \code{Observable(1, 2, 3, 4)} or an \obs that is created from a list of elements as shown in \autoref{lst:obs-from-seq}, it does not make any sense to add any overproduction-avoiding operators, as this kind of stream is sequential and will in fact emit at a rate which is determined by the \obv.
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Observable from \code{Seq[T]}}, label={lst:obs-from-seq}]
@@ -20,26 +22,37 @@ def fromSeq[T](list: Seq[T]): Observable[T] $=$ {
 We are aware of the fact that these operators also have use cases other than avoiding overproduction, such as edge detection or calculating the derivative of a stream of numbers. However, these use cases fall outside the scope of this thesis and for them the comments above do not apply.
 
 \subsection{Callstack blocking}
-Since subscribing to an \obs is basically nothing more than supplying an \obv to the function within \code{Observable.create} and \emph{sequentially} executing this function using this provided \obv. Once an element is emitted by the source, all operations in the \obs sequence are executed on that element before a second element is emitted. In the sequence of operators in \autoref{lst:operators-obs}, first all operations on $1$ are performed, before $2$ is emitted by the \obs (and then discarded by \code{filter}). This is also the case in \autoref{lst:observeOn} up to line~\ref{line:observeOn-in-observeOn}, after which the elements are scheduled on a different thread and hence are further processed in parallel with emitting new elements from the source.
+Subscribing to an \obs is basically nothing more than supplying an \obv to the function within \code{Observable.create} and \emph{sequentially} executing this function using this provided \obv. Once an element is emitted by the source, all operations in the \obs sequence are executed on that element before a second element is emitted. In the sequence of operators in \autoref{lst:operators-obs}, first all operations on $1$ are performed, before $2$ is emitted by the \obs (and then discarded by \code{filter}). This is also the case in \autoref{lst:observeOn} up to line~\ref{line:observeOn-in-observeOn}, after which the elements are scheduled on a different thread and hence are further processed in parallel with emitting new elements from the source.
 
-The order of operations is designed this way to allow for lazy evaluation: never run code that does not need to be run. If a cold \obs contains 5 elements and the operator sequence contains the operator \code{take(2)}, only the first 2 elements from this \obs will be evaluated, rather than all 5. After the second element has passed \code{take}, it sends an \code{onCompleted()} downstream, right after the second \code{onNext}, causing the stream to end without evaluating the other 3 elements.
+The order of operations is designed this way to allow for lazy evaluation: never run code that does not need to be run. If a cold \obs contains 5 elements and the operator sequence contains the operator \code{take(2)} (see \autoref{lst:lazy}), only the first 2 elements from this \obs will be evaluated, rather than all 5. After the second element has passed \code{take}, it sends an \code{onCompleted()} downstream, right after the second \code{onNext}, causing the stream to end without evaluating the other 3 elements. \todo{this alinea should be on the same page as the code?}
 
-Following this order of operations, we can conclude that basically every higher order function that is executed in the operator sequence is in a sense blocking the callstack and thereby preventing the source from emitting a next element until the previous element has gone through the whole operator sequence. This is the reason why we concluded in the previous that avoiding overproduction on a cold no-latency stream does not make any sense. The rate of emission is already determined by the speed in which all operators are executed.
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={Lazy evaluation}, label={lst:lazy}]
+Observable(1, 2, 3, 4, 5)
+    // some operators
+    .take(2)
+    // some more operators
+    .subscribe(i $\Rightarrow$ print(i + " ")) // only prints the first and second element
+\end{lstlisting}
+\end{minipage}
 
-This is also true for any other kind of stream, whether it is hot or cold, whether or not it has latency and no matter what kind of source emits these elements. This may seem quite surprising, especially for the hot \obs, since we always claimed that this operator is only controlled by its outside environment. However, an example of this is shown in \autoref{lst:blocking-hot-obs}. Here a cold \obs is subscribed to a \subj (line~\ref{line:blocking-hot-subject-subscribe}), making it hot, according to section~\ref{subsec:subjects}. At several points in the operator sequence the time passed since \code{start} is printed and on line~\ref{line:blocking-hot-sleep} the callstack is blocked for 1 second by pausing the current thread. The console output of executing \autoref{lst:blocking-hot-obs} is provided in \autoref{lst:console-output-blocking-hot}\footnote{Due to the inner workings of the JVM, the times shown here may vary from execution to execution by a couple of milliseconds.}.
+Following this order of operations, we can conclude that basically every higher order function that is executed in the operator sequence is in a sense blocking the callstack during its computation and thereby preventing the source from emitting a next element until the previous element has gone through the whole operator sequence. This is the reason why we concluded in the previous section that avoiding overproduction on a cold no-latency stream does not make any sense. The rate of emission is already determined by the speed in which all operators together are executed.
+
+This is also true for any other kind of stream, whether it is hot or cold, whether or not it has latency and no matter what kind of source emits these elements. This may seem quite surprising, especially for the hot \obs, since we always claimed that this operator is only controlled by its outside environment. However, an example of this is shown in \autoref{lst:blocking-hot-obs}. Here a cold \obs is subscribed to a \subj (line~\ref{line:blocking-hot-subject-subscribe}), making it hot, according to section~\ref{subsec:subjects}. At several points in the operator sequence the time passed since \code{start} is printed and on line~\ref{line:blocking-hot-sleep} the callstack is blocked for 1 second by pausing the thread this whole process runs on. The console output of executing \autoref{lst:blocking-hot-obs} is provided in \autoref{lst:console-output-blocking-hot}\footnote{Due to the inner workings of the JVM, the times shown here may vary by a couple of milliseconds from execution to execution.}.
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Applying callstack blocking on a hot \obs}, label={lst:blocking-hot-obs}]
-def now() = System.currentTimeMillis()
-val start = now()
+def now = System.currentTimeMillis()
+val start = now
+def timePassed = now - start
 
 val timer = Observable(1, 2, 3, 4)
-    .tee(i $\Rightarrow$ println("[" + (now() - start) + "] emitted - " + i))
+    .tee(i $\Rightarrow$ println("[" + timePassed + "] emitted - " + i))
 val subject = Subject[Int]
 
-subject.tee(i $\Rightarrow$ println("[" + (now() - start) + "] before - " + i))
+subject.tee(i $\Rightarrow$ println("[" + timePassed + "] before - " + i))
     .tee(_ $\Rightarrow$ Thread.sleep(1000)) |\label{line:blocking-hot-sleep}|
-    .subscribe(i $\Rightarrow$ println("[" + (now() - start) + "] after - " + i))
+    .subscribe(i $\Rightarrow$ println("[" + timePassed + "] after - " + i))
 timer.subscribe(subject) |\label{line:blocking-hot-subject-subscribe}|
 \end{lstlisting}
 \end{minipage}
@@ -61,11 +74,15 @@ timer.subscribe(subject) |\label{line:blocking-hot-subject-subscribe}|
 \end{lstlisting}
 \end{minipage}
 
-From these results it becomes clear the first value was emitted at $t=47\ ms$. Almost immediately after that the thread on which the whole program is running, is blocked for 1 second. At time $t=1059\ ms$ the first value is propagated to the \code{subscribe}. Only then the second item is emitted by \code{Observable.apply}.
+From these results it becomes clear the first value was emitted at $t=47\ ms$. Almost immediately after that, the thread on which the whole program is running is blocked for 1 second. At time $t=1059\ ms$ the first value is propagated to the \code{subscribe}. \emph{Only then} the second item is emitted by \code{Observable.apply}.
 
-We can now conclude that even a hot \obs can be controlled by callstack blocking. Notice however that this creates a (potentially ever expanding) buffer of unprocessed \code{onNext} calls within the \code{Observable.create}, using an excessive amount of memory. With that we only emulated the naive solution to overproducing streams (see section~\ref{sec:fastproc-slowcons}) by using callstack blocking. The same buffering behavior can also happen within the \code{observeOn} operator, when this other thread used callstack blocking to slow down the stream.
+We can now conclude that even a hot \obs can be controlled by callstack blocking. Notice however that this creates a (potentially ever expanding) buffer of unprocessed \code{onNext} calls within the \code{Observable.create}'s callstack, using an excessive amount of memory. With that we only emulated the naive solution to overproducing streams (see section~\ref{sec:fastproc-slowcons}) by using callstack blocking. The same buffering behavior can also happen within the \code{observeOn} operator, when the other thread used callstack blocking to slow down the stream.
 
 The case described above is one where the thread cannot be blocked safely. It can potentially blow up the program when the buffer gets too big. This is what RxJava warns against in its wiki\cite{RxJava-Wiki-Callstack-Blocking} and what RxMobile warns against in the context of the particular \code{zip} implementation discussed in section~\ref{subsec:callstack-blocking} \cite{RxMobile}. Only certain kinds of operators can use callstack blocking safely, provided with streams that can handle this callstack blocking safely.
+
+Another issue with a hot \obs is what happens when more than one \obv is subscribed and both do callstack blocking. This can potentially lead to even more disastrous situations, where a fast \obv suffers from a slower one and where deadlock situations are inevitable.
+
+In general we can conclude that controlling the flow of data by callstack blocking is already implicitly used in cold no-latency stream, but that it is no good to use callstack blocking on a hot or cold with-latency \obs, unless the developer is completely certain of the stream's behavior.
 
 
 

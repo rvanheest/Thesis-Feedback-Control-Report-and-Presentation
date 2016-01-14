@@ -7,16 +7,16 @@ import scala.io.StdIn
 
 object CallstackBlocking extends App {
 
-	def now() = System.currentTimeMillis()
-
-	val start = now()
+	def now = System.currentTimeMillis()
+	def timePassed = now - start
+	val start = now
 
 	val timer = Observable(1, 2, 3, 4)
-		.tee(i => println("[" + (now() - start) + "] emitted - " + i))
+		.tee(i => println("[" + timePassed + "] emitted - " + i))
 	val subject = Subject[Int]
 
-	subject.tee(i => println("[" + (now() - start) + "] before - " + i))
+	subject.tee(i => println("[" + timePassed + "] before - " + i))
 		.tee(_ => Thread.sleep(1000))
-		.subscribe(i => println("[" + (now() - start) + "] after - " + i))
+		.subscribe(i => println("[" + timePassed + "] after - " + i))
 	timer.subscribe(subject)
 }
