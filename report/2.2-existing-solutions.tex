@@ -106,42 +106,21 @@ While introducing backpressure support to RxJava, it turned out that all operato
 
 As with Reactive Streams, the \obs coming from cold source is ideal for the reactive pull model of backpressure. Since the source is interactive, methods like \code{request} can be implemented. The RxJava wiki acknowledges the fact that the hot \obs is typically not suitable for the reactive pull model \cite{RxJava-Wiki-HotCold}. In order to keep supporting these streams, RxJava made backpressure optional (one can still implement its own \obs as before using \code{Observable.create}) and also advises other flow control strategies, as discussed in section~\ref{subsec:avoiding-overproduction}, as well as the \code{onBackpressureDrop} and \code{onBackpressureBuffer} operators that were mentioned in section~\ref{subsec:reactive-pull}.
 
+\subsection{Conclusion}
+This section discussed various flow control strategies in the light of hot and cold sources. For hot streams the approach of avoiding overproduction is the best way to go. As there is (by definition) not a `real' way to control the flow on the source, applying backpressure or using callstack blocking are both not an option and can (if applied) only cause infinite buffers.
 
+Cold sources, divided in `with latency' and `without latency' are better suitable for techniques like backpressure. The fact that this makes the whole \obs sequence interactive is not really important here, as the source itself is,  by definition, interactive. Just as with a hot \obs, callstack blocking is not a good idea while having a cold with-latency stream on hand. This can potentially cause infinite buffers to form. Avoiding however works great for this kind of stream, as it is bound to a notion of time.
 
-
-%Given the RS API, we assume that we are in a closed world, according to Erik. The source has to be able to satisfy the requests. This is not possible with a hot stream. RS en Reactive Pull (Rx) are most suitable for cold streams (see \cite{RxJava-Wiki-HotCold} as well)
-
-%We need to define the semantics on the Reactive Streams API, i.e. define it as a monad. Since the values are pushed at you, you need to merge streams. In the list monad you do concatenation, however, this does not work on potential infinite collections like the ones in RS. Therefore merging is the way to go. But how to do merging in a `request' way. Suggested by Erik is dovetailing. The RS website does not say anything about this. No semantics are specified.
-
-%Other problems involve operators like GroupBy. See example Erik op 37:26 => deadlock situation. You need to buffer for this? RS does not say anything about this.
-
-%Time or mouse moves is not possible in RS. Semantics need to be defined!
-
-
-
-%Google, just as RxJS has pause/resume. Something for previous chapter... see 43:38
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+\begin{tabular}[c]{| l | p{0.2\linewidth} | p{0.2\linewidth} | p{0.3\linewidth} |}
+\hline
+& Hot & Cold with latency & Cold without latency \\
+\hline
+Avoiding (time) & \multicolumn{2}{|p{0.4\linewidth}|}{Both lossy and lossless operators perform great on these kinds of streams} & Does not make sense, this type of stream is not bound to a notion of time. \\
+\hline
+Avoiding (count) & \multicolumn{3}{|p{0.7\linewidth}|}{Work great} \\
+\hline
+Callstack blocking & \multicolumn{2}{|p{0.4\linewidth}|}{Causes potentially infinite buffers} & It is there `naturally' \\
+\hline
+Backpressure & Not suitable & \multicolumn{2}{|p{0.5\linewidth}|}{Works great, but operators need to be reimplemented for this to work} \\
+\hline
+\end{tabular}
