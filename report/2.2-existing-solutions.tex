@@ -98,9 +98,28 @@ Both a cold no-latency source and a cold with-latency source are perfect candida
 A hot source on the other hand is not as suitable for the Reactive Streams API as the cold sources are. There is no way for the \code{Producer} in which the hot source is wrapped to interact with it. It cannot request the next \code{n} elements from it, nor can it request to slow down or speed up. This is implied in the nature of a hot source. The only way to have a hot source be wrapped in a \code{Producer} is to drain its the data in a buffer or queue and sending the requested amount of elements from this buffer to the \code{Subscriber}. In general this is again that dangerous move of possibly storing unwieldy amounts of data for later processing as is described in earlier sections. That being said, in special cases, where in the long term the downstream can empty the buffer before it starts overflowing, it is in fact possible to use this API for it. An example of this may be a source with bursty behavior, where in a short amount of time a large amount of data is produced, after which no data is produced for a longer amount of time.
 
 \subsection{RxJava and reactive pull}
-RxJava started of as a port of Rx.Net for the JVM and was until version 0.20 purely reactive. It did not have any other policies for handling backpressure than the ones discussed in section~\ref{subsec:avoiding-overproduction}. In version 0.20 backpressure support was introduced as a result of collaborations with the Reactive Streams initiative. This implementation (also referred to as \textit{reactive pull}) did not change the original Rx interfaces but rather added extra methods that were taken from the Reactive Streams API. Due to these changes, the reactiveness is partially lost, as the data flow was now controlled by \code{request(n)} calls from the \obv.
+RxJava started of as a port of Rx.Net for the JVM and was until version 0.20 purely reactive. It did not have any other policies for handling backpressure than the ones discussed in section~\ref{subsec:avoiding-overproduction}. In version 0.20 backpressure support was introduced as a result of collaborations with the Reactive Streams initiative. This implementation (also referred to as \textit{reactive pull}) did not change the original Rx interfaces but rather added extra interfaces and methods that were derived from the Reactive Streams API. Due to these changes, the reactiveness was partially lost, as the data flow was now controlled by \code{request(n)} calls from the \obv.
 
 From version 0.20 onward, RxJava has a lot of similarities with the Reactive Streams API in terms of handling backpressure. It is therefore well equipped to handle cold sources by wrapping them in the \obs. However, in contrast to Reactive Streams, this API is still able to correctly coop with hot sources. The RxJava wiki states that for this the \obs needs to be initialized with \code{request(Long.MAX\_VALUE)}, which orders the \obs to emit data at its own pace \cite{RxJava-Wiki-Backpressure}.
+
+While introducing backpressure support to RxJava, it turned out that all operators that needed to support this feature had to be reimplemented for the \code{request(n)} to be used. Above that, not every operator is able to support backpressure, since they convert to hot streams or it uses another flow control mechanism like time or other streams. Detailed reasons per operator for not implementing backpressure can be found in the RxJava documentation \cite{rx-api}. Other operators, that got reimplemented and supported backpressure, generally became more complex compared to the non-backpressure implementations.
+
+As with Reactive Streams, the \obs coming from cold source is ideal for the reactive pull model of backpressure. Since the source is interactive, methods like \code{request} can be implemented. The RxJava wiki acknowledges the fact that the hot \obs is typically not suitable for the reactive pull model \cite{RxJava-Wiki-HotCold}. In order to keep supporting these streams, RxJava made backpressure optional (one can still implement its own \obs as before using \code{Observable.create}) and also advises other flow control strategies, as discussed in section~\ref{subsec:avoiding-overproduction}, as well as the \code{onBackpressureDrop} and \code{onBackpressureBuffer} operators that were mentioned in section~\ref{subsec:reactive-pull}.
+
+
+
+
+%Given the RS API, we assume that we are in a closed world, according to Erik. The source has to be able to satisfy the requests. This is not possible with a hot stream. RS en Reactive Pull (Rx) are most suitable for cold streams (see \cite{RxJava-Wiki-HotCold} as well)
+
+%We need to define the semantics on the Reactive Streams API, i.e. define it as a monad. Since the values are pushed at you, you need to merge streams. In the list monad you do concatenation, however, this does not work on potential infinite collections like the ones in RS. Therefore merging is the way to go. But how to do merging in a `request' way. Suggested by Erik is dovetailing. The RS website does not say anything about this. No semantics are specified.
+
+%Other problems involve operators like GroupBy. See example Erik op 37:26 => deadlock situation. You need to buffer for this? RS does not say anything about this.
+
+%Time or mouse moves is not possible in RS. Semantics need to be defined!
+
+
+
+%Google, just as RxJS has pause/resume. Something for previous chapter... see 43:38
 
 
 
