@@ -144,22 +144,7 @@ As described in the previous section, \obs can also be written as lambda~express
 
 In the \obs lambda expression, \code{S} is equal to \code{Try[Option[T]]} and \code{R} is equal to \code{()} or \code{Unit}.
 
-Given that \obs is just a special instance of the continuation monad, it automatically has the two operators that are defined on all monads:
-
-\begin{minipage}{\linewidth}
-\begin{lstlisting}[style=HaskellStyle, caption={\obs as monad}, label={lst:obs-monad}]
-newtype Observable t = Obs { runObs :: (t -> ()) -> () }
-
-instance Monad Observable where 
-    return :: Try[Option[T]] -> Observable[T]
-    return t = Obs (\c -> c t )
-
-    (>>=) :: Observable[T] -> (Try[Option[T]] -> Observable[S]) -> Observable[S]
-    (Obs f) >>= g = Obs (\c -> f (\a -> let (Obs b) = g a in b c))
-\end{lstlisting}
-\end{minipage}
-
-In the Rx implementation, these operators are present as well. The \code{return} creates an \obs from a \code{Try[Option[T]]}, meaning that it accepts either an error, or an empty value, or a non-empty value. Therefore \code{return} is split into three operators \code{apply(t: T)}, \code{error(e: Throwable)} and \code{empty()}. Since an \obs can have multiple values, \code{apply} is overloaded to have more than one value. This overload was already shown in section~\ref{subsec:core-comps} The \code{(>>=)} operator is renamed to \code{flatMap} and also splits the \code{Try[Option[T]]} parameter into three separate parameters \cite{rx-api}. Besides that, since the \code{T $\Rightarrow$ Observable[S]} parameter is used most frequently, the \code{flatMap} operator is overloaded with only this parameter.
+Given that \obs is just a special instance of the continuation monad, it automatically has the two operators that are defined on all monads: \code{return} and \code{(>>=)} (`bind'). In the Rx implementation, these operators are present as well. The \code{return} creates an \obs from a \code{Try[Option[T]]}, meaning that it accepts either an error, or an empty value, or a non-empty value. Therefore \code{return} is split into three operators \code{apply(t: T)}, \code{error(e: Throwable)} and \code{empty()}. Since an \obs can have multiple values, \code{apply} is overloaded to have more than one value. This overload was already shown in section~\ref{subsec:core-comps}. The \code{(>>=)} operator is renamed to \code{flatMap} and also splits the \code{Try[Option[T]]} parameter into three separate parameters \cite{rx-api}. Besides that, since the \code{T $\Rightarrow$ Observable[S]} parameter is used most frequently, the \code{flatMap} operator is overloaded with only this parameter.
 
 A simple example of using these monadic operators in Rx is shown in \autoref{lst:monad-in-rx}. On line~\ref{line:return} the overloaded \code{apply} is called, which lifts four values into the \obs. The \code{flatMap} operator on line~\ref{line:flatMap} doubles the number of elements by creating an \obs that emits the value as well as the square of the value.
 
