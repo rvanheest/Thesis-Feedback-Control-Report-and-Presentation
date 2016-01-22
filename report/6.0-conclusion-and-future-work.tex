@@ -1,0 +1,20 @@
+\chapter{Conclusion and future work}
+
+\todo{content here}
+\begin{itemize}
+	\item Backpressure
+	\begin{itemize}
+		\item Push solution – control number of workers with certain metrics. This will presumably also work with hot streams such as UI events and time
+		\begin{itemize}
+			\item Queue length
+			\item Net queue length change
+			\item In/out ratio per time unit
+		\end{itemize}
+	\end{itemize}
+	\item Feedback control
+	\begin{itemize}
+		\item It’s basically an algorithm to solve ‘control problems’. How is the problem class defined where feedback control can be used as an easy solution?
+		\item It’s difficult to tune PID controllers. (refer to blog) Would it be possible to use ML for this process?
+		\item The PID controller originally comes from the field of physics and mechanical/electrical engineering and is considered to be the default controller, given its (mathematical) simplicity and quick response to change. Does this still hold for computer science, since we don’t need/use mathematical models? Or is there an alternative, easier to tune, controller that could be considered as default in computer science?
+	\end{itemize}
+\end{itemize}
