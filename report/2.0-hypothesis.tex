@@ -1,7 +1,8 @@
-\chapter{Backpressure can be solved with feedback control}
+\chapter{Exploring the problem space}
+In the previous chapter we established the definition of a \textit{reactive program} in terms of its behavior, how it is implemented in Rx, what the danger is of having an overproducing \obs and which solutions already exist to solve this problem. In this chapter we will start off discussing these solutions in further detail, consider their benefits and disadvantages and argue which solutions work for the various kinds of streams. Based on this discussion we will propose a new approach for controlling the flow of an overproducing \obs.
 
-\todo{chapter outline}
+\input{2.1-hot-cold-streams}
 
-\todo{continue here}
+\input{2.2-existing-solutions}
 
-%A general stream can be initiated from different kinds of sources. Streams like a clock or external events such as a mouse move or a key press can only be viewed as \emph{reactive}. It is not possible for a clock to be controlled by a consumer that pulls the next time unit from the stream. Nor is it possible for a keyboard to be regulated by a consumer, such that it can only receive key events when the consumer asks for a next one. These streams are purely reactive and can not be 
+\input{2.3-a-new-approach}

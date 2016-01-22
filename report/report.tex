@@ -19,8 +19,9 @@
 \usepackage{graphicx} % to show images
 \usepackage{float} % places the images at precisely the location in the LaTeX code
 \usepackage[bottom]{footmisc} % fix \footnote{} position at the bottom of the page
+\usepackage{datetime}
 
-%\usepackage[numbers]{natbib}
+\newdateformat{monthyeardate}{\monthname[\THEMONTH], \THEYEAR}
 
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{\large @TODO: #1}}}
 \newcommand{\code}[1]{\sloppy{\mbox{\texttt{#1}}}}
@@ -31,6 +32,7 @@
 \newcommand{\subs}{\texttt{Subscription}\xspace}
 \newcommand{\subj}{\texttt{Subject}\xspace}
 \newcommand{\bsubj}{\texttt{BehaviorSubject}\xspace}
+\newcommand{\sch}{\texttt{Scheduler}\xspace}
 \newcommand{\ier}{\texttt{IEnumerator}\xspace}
 \newcommand{\ieb}{\texttt{IEnumerable}\xspace}
 \newcommand{\id}{\texttt{IDisposable}\xspace}
@@ -101,6 +103,18 @@
 
 \clearpage
 \input{2.0-hypothesis}
+
+\clearpage
+\input{3.0-intro-to-feedback-control}
+
+\clearpage
+\input{4.0-feedback-api}
+
+\clearpage
+\input{5.0-solving-overproduction-using-feedback-control}
+
+\clearpage
+\input{6.0-conclusion-and-future-work}
 
 \clearpage
 \phantomsection\addcontentsline{toc}{chapter}{References}
