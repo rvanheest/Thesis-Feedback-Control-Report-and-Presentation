@@ -19,8 +19,9 @@
 \usepackage{graphicx} % to show images
 \usepackage{float} % places the images at precisely the location in the LaTeX code
 \usepackage[bottom]{footmisc} % fix \footnote{} position at the bottom of the page
+\usepackage{datetime}
 
-%\usepackage[numbers]{natbib}
+\newdateformat{monthyeardate}{\monthname[\THEMONTH], \THEYEAR}
 
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{\large @TODO: #1}}}
 \newcommand{\code}[1]{\sloppy{\mbox{\texttt{#1}}}}
