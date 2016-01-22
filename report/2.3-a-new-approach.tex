@@ -7,7 +7,13 @@ In order to do so, we need to observe where the \obs comes from. In essence, it 
 
 Instead of wrapping a cold source in the \code{Observable.create}, we want to wrap it in an interactive interface (such that communication with the source is not coupled with its own specific interface) and pull the data out of the source via this interface. We will then add these values to a bounded buffer, from which they are pulled again by a downstream \obs on another thread. Once an element is pulled from the buffer, it will block the downstream \obs's callstack from pulling another element until the current element is fully processed or taken over by another thread. In the mean time the buffer request new elements from the source and by doing so keeps the downstream \obs as busy as it possibly can.
 
-\todo{add a picture of our approach here}
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[width=0.65\textwidth]{figures/Approach.png}
+	\end{center}
+	\label{fig:new-approach}
+	\caption{Schematic representation of our approach}
+\end{figure}
 
 With this approach we have reduced the problem of overproduction to a problem of controlling the size of a buffer to be as small as possible, without the buffer being exhausted by a fast consuming downstream. A buffer size that is too small can lead to a needless delay in consuming the data, whereas a too large buffer size is not desirable as well, given that we want to spend as little resources as possible. The complicating factor here is that it is unknown at all times how long it will take for the source to produce a next element.
 
