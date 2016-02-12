@@ -17,20 +17,24 @@ Although well suited in several use cases, control theory and the use of feedbac
 
 \section*{Research Questions}
 \addcontentsline{toc}{section}{Research Questions}
-\todo{some words}
+This thesis answers a number of questions that are related to reactive programming, overproduction and feedback control, which are listed and briefly introduced in this section.
 
 \subsubsection*{In which ways can a reactive program be controlled in order to prevent overproduction?}
-\todo{some words}
+There are multiple solutions for controlling overproduction in the context of reactive programming. To understand these solutions we first of all need to identify the various types of reactive programs and consider their mutual similarities and differences. This is important since the existing solutions do not work for every type of reactive program.
 
 \subsubsection*{How can we implement a \emph{reactive} feedback system that is composed from smaller parts?} 
-\todo{some words}
+As the solution to overproduction that is presented in this thesis makes use of control theory and feedback control, and given that these are not yet widely known and used in computer science, it is important to develop an understanding of these techniques and create the tools necessary to construct feedback systems in an easy way. We will show that these can be seen as reactive programs and implement a library on top of existing reactive programming API's.
 
-\subsubsection*{How can the overproduction problem be reduced to a feedback control system?}
-\todo{some words}
+\subsubsection*{How can the overproduction problem be reduced to a feedback control problem?}
+To solve overproduction using feedback control, it is necessary to get out of the context of reactive programming and abstract this into more general problems that can be solved by control theory. Once we developed this more general problem, we can put it back into the context of reactive programs.
 
 \subsubsection*{Can our solution be integrated in an existing API for reactive programming?}
-\todo{some words}
+In order for this solution to be useful in practice it is important to be able to interface with existing API's for reactive programming. To test this, a clean API is needed that does not yet implement any solutions for overproduction. For this purpose we use the newly created RxMobile API \cite{RxMobile}.
 
 \section*{Outline}
 \addcontentsline{toc}{section}{Outline}
-\todo{some words}
+We will start of the actual content of this thesis with a short discussion on the definition of reactive programming as it is defined in literature (\autoref{chap:problem-statement}). This is followed up in the same chapter with an extensive introduction of one of the most used reactive programming API's and the different ways in which it tries to overcome overproduction. It is important to first gain a good understanding of the API and its core concepts, since we will build on top of these in the following chapters.
+
+Different circumstances require different approaches to overproductions, as we already hypothesized above. In \autoref{chap:exploring-the-problem-space} we will explore and categorize these circumstances and describe how overproduction is dealt with best.
+
+\todo{add the rest here once it is written...}
