@@ -1,9 +1,30 @@
 \chapter{Introduction to feedback control}
 
-\todo{content here}
+\todo{
 \begin{itemize}
 	\item Reference to blog, Hellerstein and Janert
 	\item Basics of feedback control
 	\item We apply feedback control to computer science
 	\item Difference mathematical approach and our approach (also Hellerstein and Janert)
-\end{itemize}
+\end{itemize}}
+
+Control is something we deal with every day. Whether it is the temperature in our houses, the number of people in line at the supermarket's checkout or something more critical like the number of neutrons emitted during a nuclear reaction in a reactor, we have to control it to avoid potential chaos.
+
+In software development we too want to have control over the products we both create and use. For example, most applications have a settings menu where the user can alter the application's behavior to their liking; to ensure our code to be working correctly we use compilers, IDEs and automated testing tools that warn us against errors and bugs; Microsoft used to do extensive user studies when introducing new features \cite{meijer2014-embracing-the-hacker-way} and with that control the usability of their product; and last but not least, in cloud computing we want to control the number jobs in a queue and probably scale up or down depending on the amount of jobs in the queue, such that all jobs get executed as fast as possible with spending the least amount of resources.
+
+A common factor in controlling a system is the notion of feedback: you change something in the environment and see how well it adjusts towards your desired outcome. If the lines at checkout get too long, maybe an extra cash register needs to be opened; if your users don't perform well during the user study of your latest features, you should probably revise these features rather than bringing them into production; and when you alter the settings in an application, you check whether the new behavior is more to your desire and maybe fiddle around with them some more.
+
+Controlling a system without the notion of feedback is possible, however this requires a very exact model of the system under control. No external forces that are not part of the model can be allowed to disturb the system. In most cases this model does unfortunately not exist and control has incorporate the system's output to come up with it's next input. If the output is not taken into account, the system can drift off and end up in undesired situations. A nice example of this are Microsoft's user studies: the user's feedback was not taken into account when Office 2007 introduced the "ribbon" to replace the existing user interface and when the start button disappeared in Windows 8 and suddenly every Windows user lost their accumulated muscle memory for commanding the Windows operating system \cite{meijer2014-embracing-the-hacker-way}.
+
+In physics and engineering, feedback control is a commonly used technique and also is fully backed by mathematics. A series of equations and theorems such as Laplace Transforms and differential equations describe the abstract behavior of a feedback controlled system and allows to evaluate its outcome after running it for a certain time and with a certain input \cite{hellerstein2004-feedback, janert2013-feedback}. These theorems and equations are so usable in science because everything else is described in the `language of mathematics' as well. We have known the differential equations to Newton's law of cooling, damped harmonic oscillators and so forth for centuries, as well as their Laplace Transforms, which are needed for the `feedback equations'.
+
+This is all in contrast to the current situation in computer science. Although proven to be very effective in physics, computer science has not yet widely adopted the techniques of feedback control. Instead, complex algorithms are written to control a web cache or do cloud scaling. Although some work has been done \todo{citation needed}, it is surprising to find that such a simple and effective technique (we will get into this more later) is mostly ignored.
+
+A potential reason for this lack of using feedback control lies in the fact that computer science does not yet fully understand the whole mathematical background of the datastructures and applications that they are using and creating. Given this lack of understanding, we are not yet able to describe to which laws our datastructures and application obey. What would be the equivalent of Newton's laws for a web cache \cite{janert2013-feedback}? Only recently some work has been done on understanding the mathematics behind this \cite{beckmann2015-cache-calculus} and we may very well see more of this in the future, which will eventually enable computer science to create a more formal model.
+
+The lack of applying feedback control in computer science is also reflected in this technique commonly not being taught in university degree computer science education. Although it is one of standard courses in physics and engineering studies, it is not at all present in the computer science curricula. And in the rare occasions it is taught, it is done in a way that a physics student would learn about it, namely as yet another maths course, even though this way of treating feedback control in computer science is not really applicable!
+
+\input{3.1-overview}
+
+\input{3.2-pid-control}
+
