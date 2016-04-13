@@ -71,8 +71,8 @@ One of these design patterns is called the \textit{Observer} pattern and forms t
 	\begin{center}
 		\includegraphics[width=0.48\textwidth]{figures/DesignPatternRelationships_bew.png}
 	\end{center}
-	\label{fig:designPatternRelationships}
 	\caption{Relations between design patterns according to \cite{gamma1994-DesignPatternsGOF}}
+	\label{fig:designPatternRelationships}
 \end{figure}
 
 In 2010, a short paper called `\textit{Subject/Observer is Dual to Iterator}' \cite{meijer2010-Observable} was published by Erik Meijer, describing a mathematical relationship between the Observer pattern and the Iterator pattern based on categorical duality that had not been reported upon earlier. The paper shows that instances of the Observer pattern can be viewed as push-based collections, rather than the pull-based collections that result from the Iterator pattern. For later parts of this thesis, it is important to understand the mathematical basis of this relationship between the \obs and \obv interfaces in Rx and the \ieb and \ier interfaces in the Iterator pattern\footnote{For the purpose of the upcoming derivation we have chosen the C\# naming conventions of the Iterator pattern. In many other programming languages these interfaces are respectively known as \code{Iterable} and \code{Iterator}.} (see \autoref{lst:itb-itr}).

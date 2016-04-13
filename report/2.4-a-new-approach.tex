@@ -15,8 +15,8 @@ Instead of wrapping a cold source in the \code{Observable.create} as is currentl
 	\begin{center}
 		\includegraphics[width=0.63\textwidth]{figures/Approach.png}
 	\end{center}
-	\label{fig:new-approach}
 	\caption{Schematic representation of our approach}
+	\label{fig:new-approach}
 \end{figure}
 
 With this approach we have reduced the problem of overproduction to a problem of controlling the size of a buffer to be as small as possible, without the buffer being exhausted by a fast consuming downstream. A buffer size that is too small can lead to a needless delay in consuming the data, whereas a too large buffer size is not desirable as well, given that we want to spend as little resources as possible. The complicating factor here is that it is unknown at all times how long it will take for the source to produce a next element.
