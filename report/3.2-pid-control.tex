@@ -11,4 +11,10 @@ Obviously this behavior is caused by the controller that dictates to turn off th
 Small improvements that are often used in these kinds of systems are introducing a dead zone or Schmitt trigger, which causes the system to continue with the same corrective action until a certain threshold or a certain amount of time is exceeded. This prevents the controller from overreacting on sudden and short spikes in the control output. In the case of the air conditioning an addition such as this will cause the controller to not immediately send a `turn off signal' when the setpoint is zero and will not activate the system with the slightest deviation, but instead waits a little longer until a threshold is exceeded before activating or deactivating the system again.
 
 \subsection{Proportional control}
-Another simple controller 
+Another improvement on the on/off controller is to change the output. Rather than sending a boolean value to the controlled system, a real controller should send a floating point value. The proportional controller does this by taking the magnitude of the error into account when calculating the magnitude of the corrective action. If the tracking error is small, the control input should be small and if a large tracking error occurs, the control input should be proportionally large. To achieve this, the proportional controller uses the following formula:
+
+\begin{equation} \label{eq:proportional-control}
+u_p(t) = k_p \cdot e(t) \text{\ \ \ \ where } k_p > 0 \text{ constant}
+\end{equation} 
+
+Here $u_p(t)$ is the control input at time $t$, $e(t)$ is the tracking error at time $t$ and $k_p$ is the proportional controller gain, which is a positive constant.
