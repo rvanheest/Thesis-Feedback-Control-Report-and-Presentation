@@ -1,11 +1,5 @@
 package balltracker
 
-import balltracker.Types.Acceleration
-import balltracker.Types.History
-import balltracker.Types.Position
-import balltracker.Types.ballRadius
-import balltracker.Types.height
-import balltracker.Types.width
 import javafx.scene.canvas.GraphicsContext
 import javafx.scene.paint.Color
 import javafx.scene.shape.StrokeLineCap

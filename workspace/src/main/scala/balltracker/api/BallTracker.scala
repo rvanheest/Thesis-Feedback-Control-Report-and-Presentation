@@ -1,21 +1,5 @@
 package balltracker.api
 
-import scala.concurrent.duration.DurationInt
-
-import applied_duality.reactive.Observable
-import applied_duality.reactive.ObservableX
-import applied_duality.reactive.Observer
-import applied_duality.reactive.schedulers.JavaFxScheduler
-import applied_duality.reactive.schedulers.NewThreadScheduler
-import balltracker.AccVel
-import balltracker.AccVelPos
-import balltracker.AccVelPosGoalPair
-import balltracker.AccVelPosPair
-import balltracker.Draw
-import balltracker.Types._
-import fbc.Component
-import fbc.Operators
-import fbc.commons.Controllers
 import javafx.application.Application
 import javafx.rx.Events
 import javafx.scene.Scene
@@ -23,11 +7,20 @@ import javafx.scene.canvas.Canvas
 import javafx.scene.layout.StackPane
 import javafx.stage.Stage
 
+import applied_duality.reactive.{Observable, ObservableX, Observer}
+import applied_duality.reactive.schedulers.JavaFxScheduler
+import balltracker._
+import fbc.{Component, Operators}
+import fbc.commons.Controllers
+
+import scala.concurrent.duration.DurationInt
+import scala.language.postfixOps
+
 class BallTracker extends Application {
 
-	val kp = 3
+	val kp = 3.0
 	val ki = 0.0001
-	val kd = 80
+	val kd = 80.0
 
 	val maxA = 0.2
 
@@ -49,10 +42,10 @@ class BallTracker extends Application {
 			.publish(clicks => Observable.create((observer: Observer[AccVelPosGoalPair]) => {
 				val fbcX = Component[Position, Pos](_._1) >>> feedbackSystem(pidX)
 				val fbcY = Component[Position, Pos](_._2) >>> feedbackSystem(pidY)
-				val fbc = Component.from(clicks) >>> fbcX.zip(fbcY)(new AccVelPosPair(_, _))
+				val fbc = Component.from(clicks) >>> fbcX.zip(fbcY)(AccVelPosPair(_, _))
 
 				fbc.asObservable
-					.withLatestFrom(clicks)(new AccVelPosGoalPair(_, _))
+					.withLatestFrom(clicks)(AccVelPosGoalPair(_, _))
 					.subscribe(observer)
 			}))
 			.observeOn(JavaFxScheduler())
@@ -75,8 +68,8 @@ class BallTracker extends Application {
 
 	def feedbackSystem(pid: Component[Double, Double]): BallFeedbackSystem = {
 		pid.map(d => math.max(math.min(d * 0.001, maxA), -maxA))
-				.scan(new AccVel)(new AccVel(_, _)).drop(1)
-				.scan(new AccVelPos(ballRadius))(new AccVelPos(_, _))
+				.scan(new AccVel)(AccVel(_, _)).drop(1)
+				.scan(AccVelPos(ballRadius))(AccVelPos(_, _))
 				.sample(16 milliseconds)
 				.feedback(_.position)
 	}

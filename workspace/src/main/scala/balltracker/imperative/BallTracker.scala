@@ -1,21 +1,17 @@
 package balltracker.imperative
 
-import scala.annotation.tailrec
-import scala.collection.mutable.Queue
-import balltracker.Draw
-import balltracker.Types._
-import javafx.application.Application
-import javafx.application.Platform
+import javafx.application.{Application, Platform}
 import javafx.geometry.Pos
-import javafx.rx.toHandler
-import javafx.rx.toRunnable
+import javafx.rx.{toHandler, toRunnable}
 import javafx.scene.Scene
-import javafx.scene.canvas.Canvas
-import javafx.scene.canvas.GraphicsContext
+import javafx.scene.canvas.{Canvas, GraphicsContext}
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout.StackPane
-import javafx.stage.Stage
-import javafx.stage.WindowEvent
+import javafx.stage.{Stage, WindowEvent}
+
+import balltracker._
+
+import scala.annotation.tailrec
 
 // original: github.com/nikital/pid
 class BallTracker extends Application {
@@ -100,7 +96,7 @@ class BallTracker extends Application {
 		stage.setTitle("Balltracker")
 		stage.show()
 
-		loop.start
+		loop.start()
 	}
 }
 object BallTracker extends App {
