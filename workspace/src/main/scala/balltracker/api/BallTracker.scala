@@ -39,20 +39,20 @@ class BallTracker extends Application {
 
 		root.mouseClicked
 			.map(event => (event.getX, event.getY))
-			.publish(clicks => Observable.create((observer: Observer[AccVelPosGoalPair]) => {
+			.publish(clicks => Observable.create((observer: Observer[AccVelPosGoal2D]) => {
 				val fbcX = Component[Position, Pos](_._1) >>> feedbackSystem(pidX)
 				val fbcY = Component[Position, Pos](_._2) >>> feedbackSystem(pidY)
-				val fbc = Component.from(clicks) >>> fbcX.zip(fbcY)(AccVelPosPair(_, _))
+				val fbc = Component.from(clicks) >>> fbcX.zip(fbcY)(AccVelPos2D(_, _))
 
 				fbc.asObservable
-					.withLatestFrom(clicks)(AccVelPosGoalPair(_, _))
+					.withLatestFrom(clicks)(AccVelPosGoal2D(_, _))
 					.subscribe(observer)
 			}))
 			.observeOn(JavaFxScheduler())
 			.tee(pair => Draw.draw(pair.position, pair.goal, pair.acceleration, history))
 			.map(_.position)
 			.buffer(5)
-			.map(_(4))
+			.map(_.last)
 			.subscribe(pos => {
 				history.synchronized {
 					if (history.size >= 50)
@@ -68,8 +68,8 @@ class BallTracker extends Application {
 
 	def feedbackSystem(pid: Component[Double, Double]): BallFeedbackSystem = {
 		pid.map(d => math.max(math.min(d * 0.001, maxA), -maxA))
-				.scan(new AccVel)(AccVel(_, _)).drop(1)
-				.scan(AccVelPos(ballRadius))(AccVelPos(_, _))
+				.scan(new AccVel)(_ accelerate _).drop(1)
+				.scan(AccVelPos(ballRadius))(_ move _)
 				.sample(16 milliseconds)
 				.feedback(_.position)
 	}

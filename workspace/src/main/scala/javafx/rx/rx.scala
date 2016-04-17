@@ -16,7 +16,7 @@ package object rx {
 	}
 
 	implicit def toRunnable(runnable: () => Unit): Runnable = {
-		new Runnable { override def run = runnable() }
+		new Runnable { override def run() = runnable() }
 	}
 
 	implicit class Events(val node: Node) extends AnyVal {
