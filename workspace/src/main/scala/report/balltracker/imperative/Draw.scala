@@ -39,16 +39,13 @@ object Draw {
   }
 
   def drawLine(ball: Position, setpoint: Position)(implicit gc: GraphicsContext) = {
-    val (bx, by) = ball
-    val (sx, sy) = setpoint
-
     gc.setStroke(Color.rgb(96, 185, 154))
     gc.setLineWidth(1.0)
     gc.setLineDashes(8.0, 14.0)
 
     gc.beginPath()
-    gc.moveTo(sx, sy)
-    gc.lineTo(bx, by)
+    (gc.moveTo _).tupled(setpoint)
+    (gc.lineTo _).tupled(ball)
     gc.stroke()
     gc.setLineDashes()
   }
@@ -75,8 +72,7 @@ object Draw {
   def drawHistory(history: History)(implicit gc: GraphicsContext) = {
     history.synchronized {
       history.zipWithIndex.foreach(item => {
-        val (pos, index) = item
-        val (x, y) = pos
+        val ((x, y), index) = item
         val size = history.size
         val alpha = (index: Double) / size
 
