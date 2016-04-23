@@ -10,6 +10,7 @@ object Draw {
     drawBackground
     drawHistory(history)
     drawLine(pos, setpoint)
+    drawSetpoint(setpoint)
     drawBall(pos)
     drawVectors(pos, acc)
   }
@@ -25,6 +26,16 @@ object Draw {
 
     gc.setFill(Color.rgb(123, 87, 71))
     gc.fillOval(x - ballRadius, y - ballRadius, diameter, diameter)
+  }
+
+  def drawSetpoint(setpoint: Position)(implicit gc: GraphicsContext) = {
+    val (x, y) = setpoint
+
+    val radius = ballRadius / 4
+    val diameter = radius * 2
+
+    gc.setFill(Color.rgb(161, 90, 90))
+    gc.fillOval(x - radius, y - radius, diameter, diameter)
   }
 
   def drawLine(ball: Position, setpoint: Position)(implicit gc: GraphicsContext) = {

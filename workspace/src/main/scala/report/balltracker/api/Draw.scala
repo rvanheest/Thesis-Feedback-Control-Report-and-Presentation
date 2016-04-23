@@ -4,12 +4,15 @@ import javafx.scene.canvas.GraphicsContext
 import javafx.scene.paint.Color
 import javafx.scene.shape.StrokeLineCap
 
+import report.balltracker.imperative._
+
 object Draw {
 
   def draw(pos: Position, setpoint: Position, acc: Acceleration, history: History)(implicit gc: GraphicsContext) = {
     drawBackground
     drawHistory(history)
     drawLine(pos, setpoint)
+    drawSetpoint(setpoint)
     drawBall(pos)
     drawVectors(pos, acc)
   }
@@ -25,6 +28,16 @@ object Draw {
 
     gc.setFill(Color.rgb(123, 87, 71))
     gc.fillOval(x - ballRadius, y - ballRadius, diameter, diameter)
+  }
+
+  def drawSetpoint(setpoint: Position)(implicit gc: GraphicsContext) = {
+    val (x, y) = setpoint
+
+    val radius = ballRadius / 4
+    val diameter = radius * 2
+
+    gc.setFill(Color.rgb(206, 26, 0))
+    gc.fillOval(x - radius, y - radius, diameter, diameter)
   }
 
   def drawLine(ball: Position, setpoint: Position)(implicit gc: GraphicsContext) = {
