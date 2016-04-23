@@ -19,8 +19,8 @@ trait Observable[T] {
     // other variants of subscribe
 }
 object Observable {
-  def create[T](create: Observer[T] $\Rightarrow$ Unit) = new Observable[T] {
-    override def subscribe(observer: Observer[T]) = create(observer)
+  def create[T](create: Observer[T] $\Rightarrow$ Unit) $=$ new Observable[T] {
+    override def subscribe(observer: Observer[T]) $=$ create(observer)
   }
   // other ways to create an Observable
 }

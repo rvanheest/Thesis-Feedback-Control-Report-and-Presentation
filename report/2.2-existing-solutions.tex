@@ -29,13 +29,13 @@ This is also true for all kind of stream, whether hot or cold, whether or not it
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Applying callstack blocking on a hot \obs}, label={lst:blocking-hot-obs}]
-def now = System.currentTimeMillis()
-val start = now
-def timePassed = now - start
+def now $=$ System.currentTimeMillis()
+val start $=$ now
+def timePassed $=$ now - start
 
-val timer = Observable(1, 2, 3, 4)
+val timer $=$ Observable(1, 2, 3, 4)
     .tee(i $\Rightarrow$ println("[" + timePassed + "] emitted - " + i))
-val subject = Subject[Int]
+val subject $=$ Subject[Int]
 
 subject.tee(i $\Rightarrow$ println("[" + timePassed + "] before - " + i))
     .tee(_ $\Rightarrow$ Thread.sleep(1000)) |\label{line:blocking-hot-sleep}|
