@@ -13,6 +13,8 @@ import javafx.scene.{Scene, SnapshotParameters}
 import javafx.stage.{Stage, WindowEvent}
 import javax.imageio.ImageIO
 
+import scala.language.postfixOps
+
 class BallTracker extends Application {
 
   lazy val snapshots = {

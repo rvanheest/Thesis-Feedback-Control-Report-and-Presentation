@@ -4,8 +4,6 @@ import javafx.scene.canvas.GraphicsContext
 import javafx.scene.paint.Color
 import javafx.scene.shape.StrokeLineCap
 
-import report.balltracker.imperative._
-
 object Draw {
 
   def draw(pos: Position, setpoint: Position, acc: Acceleration, history: History)(implicit gc: GraphicsContext) = {

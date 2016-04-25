@@ -13,6 +13,7 @@ import fbc.Component
 import fbc.commons.Controllers
 
 import scala.concurrent.duration.DurationInt
+import scala.language.postfixOps
 
 class BallTracker extends Application {
 

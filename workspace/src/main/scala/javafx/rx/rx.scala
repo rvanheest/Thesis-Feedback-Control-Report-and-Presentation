@@ -9,6 +9,8 @@ import javafx.scene.Node
 import javafx.scene.input.InputEvent
 import javafx.scene.input.MouseEvent
 
+import scala.language.implicitConversions
+
 package object rx {
 
 	implicit def toHandler[T <: Event](action: T => Unit): EventHandler[T] = {

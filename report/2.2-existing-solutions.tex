@@ -35,7 +35,7 @@ def timePassed $=$ now - start
 
 val timer $=$ Observable(1, 2, 3, 4)
     .tee(i $\Rightarrow$ println("[" + timePassed + "] emitted - " + i))
-val subject $=$ Subject[Int]
+val subject $=$ Subject[Int]()
 
 subject.tee(i $\Rightarrow$ println("[" + timePassed + "] before - " + i))
     .tee(_ $\Rightarrow$ Thread.sleep(1000)) |\label{line:blocking-hot-sleep}|
