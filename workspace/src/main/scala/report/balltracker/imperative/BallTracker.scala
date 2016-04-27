@@ -26,16 +26,13 @@ class BallTracker extends Application {
   var ball = Ball(ballRadius)
 
   var setpoint = ball.position
-  var prevError = (0.0, 0.0)
-  var integral = (0.0, 0.0)
+  var prevError, integral = (0.0, 0.0)
 
   val history = new History
   var historyTick = 0
 
   def pid: Acceleration = {
-    val kp = 3.0
-    val ki = 0.0001
-    val kd = 80.0
+	val (kp, ki, kd) = (3.0, 0.0001, 80.0)
 
     val error = setpoint - ball.position
     val derivative = error - prevError
@@ -47,14 +44,12 @@ class BallTracker extends Application {
   }
 
   def update(implicit gc: GraphicsContext): Unit = {
-    val acceleration = pid map (a => math.max(math.min(a, 0.2), -0.2))
-    ball = ball accelerate acceleration
+    ball = ball accelerate (pid map (a => math.max(math.min(a, 0.2), -0.2)))
 
     // managing the history
     historyTick += 1
     if (historyTick == 5) {
       historyTick = 0
-
       if (history.size >= 50)
         history.dequeue
       history enqueue ball.position
