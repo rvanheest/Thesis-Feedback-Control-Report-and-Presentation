@@ -67,19 +67,20 @@ class BallTracker extends Application {
 
   def start(stage: Stage) = {
     val canvas = new Canvas(width, height)
-    implicit val gc = canvas getGraphicsContext2D
-
     val root = new StackPane(canvas)
     root setAlignment Pos.TOP_LEFT
     root.addEventHandler(MouseEvent.MOUSE_CLICKED, (e: MouseEvent) => setpoint = (e.getX, e.getY))
 
-    val loop = new Thread(() => while (true) { update; Thread.sleep(16) })
+    implicit val gc = canvas getGraphicsContext2D
+    var running = true
+    val loop = new Thread(() => while (running) { update; Thread.sleep(16) })
+    loop.setDaemon(true)
 
-    stage setOnHidden ((_: WindowEvent) => System.exit(0))
+    stage setOnHidden ((_: WindowEvent) => { running = false; loop.join() })
     val scene = new Scene(root, width, height)
     stage setScene scene
     stage setTitle "Balltracker"
-    stage.show()
+    stage show()
 
     scene.addEventHandler(KeyEvent.KEY_PRESSED, (e: KeyEvent) => if (e.getText == "s") snapshot(canvas))
 
