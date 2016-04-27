@@ -1,19 +1,7 @@
 \section{An extended example}
 To get a better feel for how a feedback control system works in practice, we will discuss a simple but interesting application of feedback control that uses the theory covered in the previous sections. In this section we show an imperative reference implementation. In the next chapter we will continue to use and refactor this application as we come up with an API for constructing and executing feedback systems. The application at hand is a port from the original implementation by Nikita Leshenko in Javascript, CSS and HTML \cite{nikital-balltracker}. We will however use Scala as our programming language and JavaFx for drawing the graphics on the screen.
 
-The application consists of a flat surface on which a ball can move around. The goal is to move the ball from its initial position to the position on the surface that the user clicks on with the mouse. \autoref{fig:balltracker-initial} shows the ball in its initial state when the application starts. When the user clicks on the screen, the ball starts moving to that position as shown by \autoref{fig:balltracker-moving}. Besides the background and the ball, also the desired position, a dashed line between the ball and the desired position, the acceleration in both the $x$ and $y$ directions and a trail of previous positions are drawn (which are fading away over time). After some time the ball is at its desired position and waits there for a new position to navigate to (\autoref{fig:balltracker-reached}). Notice that the desired position can also be updated while the ball is still moving, in which case it moves to the new and discards the old destination.
-
-In order to allow the ball to move in a natural way, we remind the reader of some basic equations from physics that describe the one dimensional motion of an object as a function of time (\autoref{eq:motion}). Here $x_t$, $v_t$ and $a_t$ are the ball's position, velocity and acceleration at time $t$ respectively. For two-dimensional motion we can combine two sets of these equations for both dimensions.
-
-\begin{subequations}
-	\begin{equation}
-		x_t = x_{t - 1} + v_t \cdot \Delta t
-	\end{equation}
-	\begin{equation}
-		v_t = v_{t - 1} + a_t \cdot \Delta t
-	\end{equation}
-	\label{eq:motion}
-\end{subequations}
+The application consists of a flat surface on which a ball can move around. The goal is to move the ball from its initial position to the position on the surface that the user clicks on with the mouse. \Cref{fig:balltracker-initial} shows the ball in its initial state when the application starts. When the user clicks on the screen, the ball starts moving to that position as shown by \Cref{fig:balltracker-moving}. Besides the background and the ball, also the desired position, a dashed line between the ball and the desired position, the acceleration in both the $x$ and $y$ directions and a trail of previous positions are drawn (which are fading away over time). After some time the ball is at its desired position and waits there for a new position to navigate to (\Cref{fig:balltracker-reached}). Notice that the desired position can also be updated while the ball is still moving, in which case it moves to the new and discards the old destination.
 
 \begin{figure}
 	\centering
@@ -31,7 +19,7 @@ In order to allow the ball to move in a natural way, we remind the reader of som
 	
 	\begin{subfigure}[b]{0.80\linewidth}
 		\includegraphics[trim = 0mm 110mm 0mm 0mm, clip, width=\linewidth]{figures/BallTracker-overshooting.png}
-		\caption{Moving to desired position}
+		\caption{Moving to desired position, overshooting a bit}
 		\label{fig:balltracker-moving}
 	\end{subfigure}
 	
@@ -44,7 +32,19 @@ In order to allow the ball to move in a natural way, we remind the reader of som
 	\label{fig:balltracker}
 \end{figure}
 
-The implementation of these required pieces of physics can be found in \autoref{lst:ball-physics}. We first define a \code{Position}, \code{Velocity} and \code{Acceleration} as tuples of \code{Double} as well as some mathematical operations on the tuple type. The \code{Ball} class describes the state of the ball having a position, velocity and acceleration. A second constructor (\code{apply}) defines the initial position with no acceleration or velocity. The method \code{accelerate} on this class takes a new acceleration and calculates a new state for the ball according to \autoref{eq:motion}. Notice that we discard the $\Delta t$ term as this is always equal to 1. To keep track of the ball's previous positions we define a type \code{History}, being a queue of \code{Position}s.
+In order to allow the ball to move in a natural way, we remind the reader of some basic equations from physics that describe the one dimensional motion of an object as a function of time (\Cref{eq:motion}). Here $x_t$, $v_t$ and $a_t$ are the ball's position, velocity and acceleration at time $t$ respectively. For two-dimensional motion we can combine two sets of these equations for both dimensions.
+
+\begin{subequations}
+	\begin{equation}
+		x_t = x_{t - 1} + v_t \cdot \Delta t
+	\end{equation}
+	\begin{equation}
+		v_t = v_{t - 1} + a_t \cdot \Delta t
+	\end{equation}
+	\label{eq:motion}
+\end{subequations}
+
+The implementation of these required pieces of physics can be found in \Cref{lst:ball-physics}. We first define a \code{Position}, \code{Velocity} and \code{Acceleration} as tuples of \code{Double} as well as some mathematical operations on the tuple type. The \code{Ball} class describes the state of the ball having a position, velocity and acceleration. A second constructor (\code{apply}) defines the initial position with no acceleration or velocity. The method \code{accelerate} on this class takes a new acceleration and calculates a new state for the ball according to \Cref{eq:motion}. Notice that we discard the $\Delta t$ term, since this will always be equal to 1. To keep track of the ball's previous positions we define \code{History} to be a queue of \code{Position}s.
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Ball motion physics}, label={lst:ball-physics}]
@@ -63,7 +63,7 @@ implicit class Tuple2Math[X: Numeric, Y: Numeric](val src: (X, Y)) {
 }
 
 case class Ball(acc: Acceleration, vel: Velocity, pos: Position) {
-  def accelerate(newAcc: Acceleration): Ball $=$ {
+  def accelerate(newAcc: Acceleration): Ball $=$ { |\label{line:accelerate}|
     Ball(newAcc, vel + newAcc, pos + vel + newAcc)
   }
 }
@@ -75,24 +75,29 @@ object Ball {
 \end{lstlisting}
 \end{minipage}
 
-\todo{text here}
+The next step in creating this application is to design the feedback system itself. The \textit{system under control} here is of course the ball, from which at any point acceleration, velocity and position can be measured. Given that our \textit{setpoint} is equivalent to the position of where the ball should end up eventually, it makes most sense to define the \textit{control output} as the current position of the ball. From this it follows that the \textit{tracking error} represents the distance to be traveled before reaching the desired position. Depending on the distance, a controller can then decide how much it wants to speed up the ball by providing a new acceleration as the system's \textit{control input}. To get the ball's next position, this acceleration has to be integrated twice to get the ball's position after $\Delta t$ time.
+
+To transform a distance into an acceleration, we can use the power of the PID controller. As discussed before this controller is renowned for its effectiveness and simplicity and is therefore most commonly used in all kinds of feedback systems, especially those who deal with floating point control inputs and outputs. For this use case it makes absolute sense to use this controller as well. The \textit{proportional controller} will look at the current distance to be traveled and comes up with some amount of acceleration. However, this acceleration will approach zero as the ball approaches its destination, causing it to keep its same velocity rather than slowing down. To prevent this, we need a strong \textit{derivative controller} that can counteract this velocity and slow down the ball as the distance is becoming smaller. For the purpose of looking back at previous distances we also add an \textit{integral controller} into the mix.
+
+Both the PID controller and the feedback system are implemented in \Cref{lst:ball-feedback}. After some initialization we define an iteration of the controller following \Cref{eq:proportional-control,eq:integral-control-discrete,eq:derivative-control} in the \code{pid} function on \cref{line:pid-function}. Again notice that this operates on the tuple types and uses the operators defined in \Cref{lst:ball-physics}. This function returns a new \code{Acceleration} which corresponds to the control input as described above.
+
+The pid controller is then used in the construction of the feedback cycle (\cref{line:update}). It is first scaled down in such a way that it has an absolute maximum acceleration $0.2$, after which it is fed into the controlled system. This calls the \code{accelerate} function on the \code{Ball} (\Cref{lst:ball-physics} \cref{line:accelerate}), which calculates the ball's new velocity and position. The new state is then stored in the \code{ball} variable, which represents the latest control output. The rest of this function deals with managing the history and redrawing the application, which are considered not relevant for the implementation of the feedback system itself.
+
+Now that the feedback cycle is implemented, we can plug this in a JavaFx application that contains the canvas on which the application is drawn, as well as assigning the setpoint value and looping through the feedback cycle every 16 milliseconds. The code for this can be found in \Cref{lst:ball-drawing}.
+
+\todo{continue here with tuning of the pid and what happens when the pid is not tuned correctly. Also place the full code in an appendix and refer to that as well (also the Draw object!). Finally discuss external disturbances.}
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Ball drawing}, label={lst:ball-feedback}]
 var ball $=$ Ball(ballRadius)
-
 var setpoint $=$ ball.position
-var prevError $=$ (0.0, 0.0)
-var integral $=$ (0.0, 0.0)
+var prevError, integral $=$ (0.0, 0.0)
 
 val history $=$ new History
 var historyTick $=$ 0
 
-def pid: Acceleration $=$ {
-  val kp $=$ 3.0
-  val ki $=$ 0.0001
-  val kd $=$ 80.0
-
+def pid: Acceleration $=$ { |\label{line:pid-function}|
+  val (kp, ki, kd) $=$ (3.0, 0.0001, 80.0)
   val error $=$ setpoint - ball.position
   val derivative $=$ error - prevError
 
@@ -102,15 +107,13 @@ def pid: Acceleration $=$ {
   (error * kp + integral * ki + derivative * kd) * 0.001
 }
 
-def update(implicit gc: GraphicsContext): Unit $=$ {
-  val acceleration $=$ pid map (a $\Rightarrow$ math.max(math.min(a, 0.2), -0.2))
-  ball $=$ ball accelerate acceleration
+def update(implicit gc: GraphicsContext): Unit $=$ { |\label{line:update}|
+  ball $=$ ball accelerate (pid map (a $\Rightarrow$ math.max(math.min(a, 0.2), -0.2)))
 
   // managing the history
   historyTick $+=$ 1
   if (historyTick $==$ 5) {
     historyTick $=$ 0
-
     if (history.size $>=$ 50)
       history.dequeue
     history enqueue ball.position
@@ -120,30 +123,26 @@ def update(implicit gc: GraphicsContext): Unit $=$ {
   Platform runLater (() $\Rightarrow$ Draw.draw(ball.position, setpoint, ball.acceleration, history))
 }
 \end{lstlisting}
-\end{minipage}
 
-\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Ball drawing}, label={lst:ball-drawing}]
 class BallTracker extends Application {
-
-  // code from Listing 3.2
+  // code from Listing 3.2 goes here
 
   def start(stage: Stage) $=$ {
     val canvas $=$ new Canvas(width, height)
-    implicit val gc $=$ canvas getGraphicsContext2D
-
     val root $=$ new StackPane(canvas)
     root setAlignment Pos.TOP_LEFT
     root.addEventHandler(MouseEvent.MOUSE_CLICKED,
         (e: MouseEvent) $\Rightarrow$ setpoint $=$ (e.getX, e.getY))
 
-    val loop $=$ new Thread(() $\Rightarrow$ while (true) { update; Thread.sleep(16) })
+    implicit val gc $=$ canvas getGraphicsContext2D
+    var running $=$ true
+    val loop $=$ new Thread(() $\Rightarrow$ while (running) { update; Thread.sleep(16) })
 
-    stage setOnHidden ((_: WindowEvent) $\Rightarrow$ System.exit(0))
-    val scene $=$ new Scene(root, width, height)
-    stage setScene scene
+    stage setOnHidden ((_: WindowEvent) $\Rightarrow$ { running $=$ false; loop.join() })
+    stage setScene new Scene(root, width, height)
     stage setTitle "Balltracker"
-    stage.show()
+    stage show()
 
     loop.start()
   }
