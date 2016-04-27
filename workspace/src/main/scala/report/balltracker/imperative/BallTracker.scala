@@ -24,7 +24,6 @@ class BallTracker extends Application {
   }
 
   var ball = Ball(ballRadius)
-
   var setpoint = ball.position
   var prevError, integral = (0.0, 0.0)
 
@@ -74,7 +73,6 @@ class BallTracker extends Application {
     implicit val gc = canvas getGraphicsContext2D
     var running = true
     val loop = new Thread(() => while (running) { update; Thread.sleep(16) })
-    loop.setDaemon(true)
 
     stage setOnHidden ((_: WindowEvent) => { running = false; loop.join() })
     val scene = new Scene(root, width, height)
@@ -84,7 +82,7 @@ class BallTracker extends Application {
 
     scene.addEventHandler(KeyEvent.KEY_PRESSED, (e: KeyEvent) => if (e.getText == "s") snapshot(canvas))
 
-    loop.start()
+    loop start()
   }
 }
 object BallTracker extends App {

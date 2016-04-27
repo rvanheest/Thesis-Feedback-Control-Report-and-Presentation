@@ -17,7 +17,7 @@ package object imperative {
     import Numeric.Implicits._
     def +(other: (X, Y)) = (src._1 + other._1, src._2 + other._2)
     def -(other: (X, Y)) = (src._1 - other._1, src._2 - other._2)
-    def *[Z](scalar: Double) = (src._1.toDouble * scalar, src._2.toDouble * scalar)
+    def *(scalar: Double) = (src._1.toDouble * scalar, src._2.toDouble * scalar)
     def map[Z](f: X => Z)(implicit ev: Y =:= X): (Z, Z) = {
       ((x: X, y: Y) => (f(x), f.compose(ev)(y))).tupled(src)
     }

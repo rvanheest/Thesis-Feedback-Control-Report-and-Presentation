@@ -23,6 +23,7 @@
 \usepackage{caption} % used for multiple images in one figure
 \usepackage{subcaption} % used for multiple images in one figure
 \usepackage[nameinlink]{cleveref}
+\usepackage[toc,page]{appendix}
 
 \newdateformat{monthyeardate}{\monthname[\THEMONTH], \THEYEAR}
 
@@ -120,6 +121,11 @@
 
 \clearpage
 \input{6.0-conclusion-and-future-work}
+
+\clearpage
+\begin{appendices}
+\input{appendix1.0-balltracker-imperative}
+\end{appendices}
 
 \clearpage
 \phantomsection\addcontentsline{toc}{chapter}{References}
