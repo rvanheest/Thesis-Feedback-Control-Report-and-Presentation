@@ -1,5 +1,5 @@
 \section{An extended example}
-To get a better feel for how a feedback control system works in practice, we will discuss a simple but interesting application of feedback control that uses the theory covered in the previous sections. In this section we show an imperative reference implementation. In the next chapter we will continue to use and refactor this application as we come up with an API for constructing and executing feedback systems. The application at hand is a port from the original implementation by Nikita Leshenko in Javascript, CSS and HTML \cite{nikital-balltracker}. We will however use Scala as our programming language and JavaFx for drawing the graphics on the screen.
+To get a better feel for how a feedback control system works in practice, we will discuss a simple but interesting application of feedback control that uses the theory covered in the previous sections. In this section we show an imperative reference implementation. In the next chapter we will continue to use and refactor this application as we come up with an API for constructing and executing feedback systems. The application at hand is a port from the original implementation by Nikita Leshenko in Javascript, CSS and HTML \cite{nikital-balltracker}. We will however use Scala as our programming language and JavaFx for drawing the graphics on the screen. To get a feel of what this application is doing we strongly recommend to have a look at the online version\footnote{\url{http://nikital.github.io/pid/}} first before proceeding with this section!
 
 The application consists of a flat surface on which a ball can move around. The goal is to move the ball from its initial position to the position on the surface that the user clicks on with the mouse. \Cref{fig:balltracker-initial} shows the ball in its initial state when the application starts. When the user clicks on the screen, the ball starts moving to that position as shown by \Cref{fig:balltracker-moving}. Besides the background and the ball, also the desired position, a dashed line between the ball and the desired position, the acceleration in both the $x$ and $y$ directions and a trail of previous positions are drawn (which are fading away over time). After some time the ball is at its desired position and waits there for a new position to navigate to (\Cref{fig:balltracker-reached}). Notice that the desired position can also be updated while the ball is still moving, in which case it moves to the new and discards the old destination.
 
@@ -63,29 +63,33 @@ implicit class Tuple2Math[X: Numeric, Y: Numeric](val src: (X, Y)) {
 }
 
 case class Ball(acc: Acceleration, vel: Velocity, pos: Position) {
-  def accelerate(newAcc: Acceleration): Ball $=$ { |\label{line:accelerate}|
-    Ball(newAcc, vel + newAcc, pos + vel + newAcc)
-  }
+  def accelerate(nAcc: Acceleration) $=$ Ball(nAcc, vel + nAcc, pos + vel + nAcc) |\label{line:accelerate}|
 }
 object Ball {
-  def apply(radius: Double): Ball $=$ {
-    Ball((0.0, 0.0), (0.0, 0.0), (radius, radius))
-  }
+  def apply(radius: Double) $=$ Ball((0.0, 0.0), (0.0, 0.0), (radius, radius))
 }
 \end{lstlisting}
 \end{minipage}
 
-The next step in creating this application is to design the feedback system itself. The \textit{system under control} here is of course the ball, from which at any point acceleration, velocity and position can be measured. Given that our \textit{setpoint} is equivalent to the position of where the ball should end up eventually, it makes most sense to define the \textit{control output} as the current position of the ball. From this it follows that the \textit{tracking error} represents the distance to be traveled before reaching the desired position. Depending on the distance, a controller can then decide how much it wants to speed up the ball by providing a new acceleration as the system's \textit{control input}. To get the ball's next position, this acceleration has to be integrated twice to get the ball's position after $\Delta t$ time.
+The next step in creating this application is to design the feedback system itself (\Cref{fig:balltracker-diagram}). The \textit{system under control} here is of course the ball, from which at any point acceleration, velocity and position can be measured. Given that our \textit{setpoint} is equivalent to the position of where the ball should end up eventually, it makes most sense to define the \textit{control output} as the current position of the ball. From this it follows that the \textit{tracking error} represents the distance to be traveled before reaching the desired position. Depending on the distance, a controller can then decide how much it wants to speed up the ball by providing a new acceleration as the system's \textit{control input}. To get the ball's next position, this acceleration has to be integrated twice to get the ball's position after $\Delta t$ time.
 
 To transform a distance into an acceleration, we can use the power of the PID controller. As discussed before this controller is renowned for its effectiveness and simplicity and is therefore most commonly used in all kinds of feedback systems, especially those who deal with floating point control inputs and outputs. For this use case it makes absolute sense to use this controller as well. The \textit{proportional controller} will look at the current distance to be traveled and comes up with some amount of acceleration. However, this acceleration will approach zero as the ball approaches its destination, causing it to keep its same velocity rather than slowing down. To prevent this, we need a strong \textit{derivative controller} that can counteract this velocity and slow down the ball as the distance is becoming smaller. For the purpose of looking back at previous distances we also add an \textit{integral controller} into the mix.
 
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[width=0.85\textwidth]{figures/BallTracker-diagram.png}
+	\end{center}
+	\caption{Architecture of the ball movement control system}
+	\label{fig:balltracker-diagram}
+\end{figure}
+
 Both the PID controller and the feedback system are implemented in \Cref{lst:ball-feedback}. After some initialization we define an iteration of the controller following \Cref{eq:proportional-control,eq:integral-control-discrete,eq:derivative-control} in the \code{pid} function on \cref{line:pid-function}. Again notice that this operates on the tuple types and uses the operators defined in \Cref{lst:ball-physics}. This function returns a new \code{Acceleration} which corresponds to the control input as described above.
 
-The pid controller is then used in the construction of the feedback cycle (\cref{line:update}). It is first scaled down in such a way that it has an absolute maximum acceleration $0.2$, after which it is fed into the controlled system. This calls the \code{accelerate} function on the \code{Ball} (\Cref{lst:ball-physics} \cref{line:accelerate}), which calculates the ball's new velocity and position. The new state is then stored in the \code{ball} variable, which represents the latest control output. The rest of this function deals with managing the history and redrawing the application, which are considered not relevant for the implementation of the feedback system itself.
+The PID controller is then used in the construction of the feedback cycle (\cref{line:update}). It is first scaled down in such a way that it has an absolute maximum acceleration $0.2$, after which it is fed into the controlled system. This calls the \code{accelerate} function on the \code{Ball} (\Cref{lst:ball-physics} \cref{line:accelerate}), which calculates the ball's new velocity and position. The new state is then stored in the \code{ball} variable, which represents the latest control output. The rest of this function deals with managing the history and redrawing the application, which are considered not relevant for the implementation of the feedback system itself.
 
 Now that the feedback cycle is implemented, we can plug this in a JavaFx application that contains the canvas on which the application is drawn, as well as assigning the setpoint value and looping through the feedback cycle every 16 milliseconds. The code for this can be found in \Cref{lst:ball-drawing}.
 
-\todo{continue here with tuning of the pid and what happens when the pid is not tuned correctly. Also place the full code in an appendix (see \Cref{lst:ball-full}) and refer to that as well (also the Draw object!). Finally discuss external disturbances.}
+As one can see from the code, there is not much room in the feedback system to work on the performance or accuracy of the ball movement control. The controlled system, in \Cref{lst:ball-feedback} consisting of the two \textit{sigma}s and the \textit{DRAW}, is fixed by the equations in \ref{eq:motion}. Also the \textit{position} block is not something that can improve the performance and accuracy. The only place to do so are the three controller gains in the PID controller function. In \Cref{lst:ball-feedback} \cref{line:pid-function} we set these values to $k_p = 3.0$, $k_i = 0.0001$ and $k_d = 80.0$\footnote{We will refer to these values as \textit{default values}.}. These values originate from the original version of this application by Nikita Leshenko \cite{nikital-balltracker}. In his implementation one can also alter these values and see how they affect the performance and accuracy of the ball movement.
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Ball drawing}, label={lst:ball-feedback}]
@@ -123,7 +127,6 @@ def update(implicit gc: GraphicsContext): Unit $=$ { |\label{line:update}|
   Platform runLater (() $\Rightarrow$ Draw.draw(ball.position, setpoint, ball.acceleration, history))
 }
 \end{lstlisting}
-
 \begin{lstlisting}[style=ScalaStyle, caption={Ball drawing}, label={lst:ball-drawing}]
 class BallTracker extends Application {
   // code from Listing 3.2 goes here
@@ -152,3 +155,15 @@ object BallTracker extends App {
 }
 \end{lstlisting}
 \end{minipage}
+
+We already discussed the setting of only having a proportional gain (set $k_i$ and $k_d$ to zero): as the ball approaches its destination, its acceleration will approach zero, meaning that the ball will not slow down but rather keeps moving with the same velocity. On the other hand, altering the default settings with a larger value for $k_p$ (for example $k_p = 5$) will cause the ball to overshoot its destination and have more oscillation around the destination before coming to a halt. A smaller value ($k_p = 1$) will have the opposite effect: it slows the ball down way too early and does not stop at the correct destination point.
+
+The integral controller gain is set very low by default. This is no surprise, as the previous tracking errors (the distance still to be traveled) are not of much interest for the transformation to a new acceleration. As far as we were able to observe, discarding the integral factor complete does not really hurt the performance. Increasing this value will however lead to some interesting behaviors. A value like $k_i = 0.001$ (factor 10 higher) will cause the ball to end up slightly offset of its actual destination. A value like $k_i = 0.01$ (100 times the default value) has an even more peculiar behavior as it first approaches the destination in somewhat normal fashion, then almost stops at an offset position but then creeps forward very slowly to the actual destination and holds at the correct position. This of course has to do with the relative weight of the integral part of the controller with regards to the weight of the proportional and derivative parts.
+
+The derivative controller gain has the largest impact on the PID controller with its default value being set to $k_d = 80$. This value determines most of the oscillation in the system: the larger this value is, the less oscillation occurs. On the other hand, having a derivative controller gain that is too big is not good either as it will slow down the ball too early and make it creep towards its destination.
+
+\todo{controller tuning is trial and error to a certain extend, some emperical methods by Janert (and Hellerstein?)}
+
+\todo{refer to the full code in the appendix (see \Cref{lst:ball-full}), especially the Draw object}
+
+\todo{Finally discuss external disturbances}
