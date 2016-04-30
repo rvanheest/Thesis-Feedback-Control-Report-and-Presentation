@@ -35,17 +35,16 @@ class BallTracker extends Application {
       .scan(new AccVel)(_ accelerate _).drop(1)
       .scan(Ball1D(ballRadius))(_ move _)
       .sample(16 milliseconds)
-      .feedback(_.position)
+      .feedback(_ position)
   }
 
   def start(stage: Stage) = {
     val canvas = new Canvas(width, height)
     implicit val gc = canvas.getGraphicsContext2D
-    Draw.drawBackground
-    Draw.drawBall(ballRadius, ballRadius)
+    Draw.drawInit
 
     val root = new StackPane(canvas)
-    root.setAlignment(javafx.geometry.Pos.TOP_LEFT)
+    root setAlignment javafx.geometry.Pos.TOP_LEFT
 
     val history = new History
 
@@ -63,14 +62,14 @@ class BallTracker extends Application {
       .subscribe(pos => {
         history.synchronized {
           if (history.size >= 50)
-            history.dequeue()
-          history.enqueue(pos)
+            history dequeue()
+          history enqueue pos
         }
       })
 
-    stage.setScene(new Scene(root, width, height))
-    stage.setTitle("Balltracker")
-    stage.show()
+    stage setScene new Scene(root, width, height)
+    stage setTitle "Balltracker"
+    stage show()
   }
 }
 object BallTracker extends App {

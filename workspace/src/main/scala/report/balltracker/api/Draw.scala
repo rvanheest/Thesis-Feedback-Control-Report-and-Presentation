@@ -15,6 +15,11 @@ object Draw {
     drawVectors(pos, acc)
   }
 
+  def drawInit(implicit gc: GraphicsContext) = {
+    drawBackground
+    drawBall(ballRadius, ballRadius)
+  }
+
   def drawBackground(implicit gc: GraphicsContext) = {
     gc.setFill(Color.rgb(231, 212, 146))
     gc.fillRect(0, 0, width, height)
@@ -34,21 +39,18 @@ object Draw {
     val radius = ballRadius / 4
     val diameter = radius * 2
 
-    gc.setFill(Color.rgb(206, 26, 0))
+    gc.setFill(Color.rgb(161, 90, 90))
     gc.fillOval(x - radius, y - radius, diameter, diameter)
   }
 
   def drawLine(ball: Position, setpoint: Position)(implicit gc: GraphicsContext) = {
-    val (bx, by) = ball
-    val (sx, sy) = setpoint
-
     gc.setStroke(Color.rgb(96, 185, 154))
     gc.setLineWidth(1.0)
     gc.setLineDashes(8.0, 14.0)
 
     gc.beginPath()
-    gc.moveTo(sx, sy)
-    gc.lineTo(bx, by)
+    (gc.moveTo _).tupled(setpoint)
+    (gc.lineTo _).tupled(ball)
     gc.stroke()
     gc.setLineDashes()
   }
@@ -75,8 +77,7 @@ object Draw {
   def drawHistory(history: History)(implicit gc: GraphicsContext) = {
     history.synchronized {
       history.zipWithIndex.foreach(item => {
-        val (pos, index) = item
-        val (x, y) = pos
+        val ((x, y), index) = item
         val size = history.size
         val alpha = (index: Double) / size
 

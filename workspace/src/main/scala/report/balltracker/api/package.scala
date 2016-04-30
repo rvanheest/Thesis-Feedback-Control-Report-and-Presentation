@@ -39,11 +39,7 @@ package object api {
     def apply(position: Pos): Ball1D = Ball1D(0.0, 0.0, position)
   }
 
-  case class Ball2D(acceleration: (Acc, Acc), velocity: (Vel, Vel), position: (Pos, Pos)) {
-    def move(acc: Acceleration): Ball2D = {
-      Ball2D(acc, velocity + acc, position + velocity + acc)
-    }
-  }
+  case class Ball2D(acceleration: Acceleration, velocity: Velocity, position: Position)
   object Ball2D {
     def apply(x: Ball1D, y: Ball1D): Ball2D = {
       Ball2D((x.acceleration, y.acceleration), (x.velocity, y.velocity), (x.position, y.position))
