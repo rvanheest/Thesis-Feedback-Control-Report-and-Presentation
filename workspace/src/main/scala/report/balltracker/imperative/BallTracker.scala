@@ -2,7 +2,8 @@ package report.balltracker.imperative
 
 import java.io.File
 import java.util.UUID
-import javafx.application.{Application, Platform}
+import javafx.application.Application
+import javafx.application.Platform.runLater
 import javafx.embed.swing.SwingFXUtils
 import javafx.geometry.Pos
 import javafx.rx.{toHandler, toRunnable}
@@ -43,7 +44,8 @@ class BallTracker extends Application {
   }
 
   def update(implicit gc: GraphicsContext): Unit = {
-    ball = ball accelerate (pid map (a => math.max(math.min(a, 0.2), -0.2)))
+    val acceleration = pid map (a => math.max(math.min(a, 0.2), -0.2))
+    ball = ball accelerate acceleration
 
     // managing the history
     historyTick += 1
@@ -55,7 +57,7 @@ class BallTracker extends Application {
     }
 
     // drawing all the elements
-    Platform runLater (() => Draw.draw(ball.position, setpoint, ball.acceleration, history))
+    runLater (() => Draw.draw(ball.position, setpoint, ball.acceleration, history))
   }
 
   def snapshot(canvas: Canvas): Unit = {

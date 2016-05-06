@@ -27,6 +27,8 @@
 
 \newdateformat{monthyeardate}{\monthname[\THEMONTH], \THEYEAR}
 
+\crefname{appsec}{Appendix}{Appendices}
+
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{\large @TODO: #1}}}
 \newcommand{\code}[1]{\sloppy{\mbox{\texttt{#1}}}}
 \newcommand{\HRule}{\rule{\textwidth}{0.5mm}}
@@ -124,6 +126,7 @@
 
 \clearpage
 \begin{appendices}
+\crefalias{chapter}{appsec}
 \input{appendix1.0-balltracker-imperative}
 \end{appendices}
 

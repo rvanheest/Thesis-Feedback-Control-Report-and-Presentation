@@ -1,7 +1,9 @@
 \chapter{Ball movement control}
+\label{app:ball-movement}
 
 \begin{lstlisting}[style=ScalaStyle, caption={Ball movement control}, label={lst:ball-full}]
-import javafx.application.{Application, Platform}
+import javafx.application.Application
+import javafx.application.Platform.runLater
 import javafx.geometry.Pos
 import javafx.scene.canvas.{Canvas, GraphicsContext}
 import javafx.scene.input.MouseEvent
@@ -14,18 +16,16 @@ import javafx.stage.{Stage, WindowEvent}
 import scala.collection.mutable
 import scala.language.postfixOps
 
-class BallTracker extends Application {
+class BallMovement extends Application {
 
   var ball $=$ Ball(ballRadius)
   var setpoint $=$ ball.position
   var prevError, integral $=$ (0.0, 0.0)
-
   val history $=$ new History
   var historyTick $=$ 0
 
   def pid: Acceleration $=$ {
     val (kp, ki, kd) $=$ (3.0, 0.0001, 80.0)
-
     val error $=$ setpoint - ball.position
     val derivative $=$ error - prevError
 
@@ -36,7 +36,8 @@ class BallTracker extends Application {
   }
 
   def update(implicit gc: GraphicsContext): Unit $=$ {
-    ball $=$ ball accelerate (pid map (a $\Rightarrow$ math.max(math.min(a, 0.2), -0.2)))
+    val acceleration $=$ pid map (a $\Rightarrow$ math.max(math.min(a, 0.2), -0.2))
+    ball $=$ ball accelerate acceleration
 
     // managing the history
     historyTick $+=$ 1
@@ -48,7 +49,7 @@ class BallTracker extends Application {
     }
 
     // drawing all the elements
-    Platform runLater (() $\Rightarrow$ Draw.draw(ball.position, setpoint, ball.acceleration, history))
+    runLater(() $\Rightarrow$ Draw.draw(ball.position, setpoint, ball.acceleration, history))
   }
 
   def start(stage: Stage) $=$ {
@@ -70,10 +71,12 @@ class BallTracker extends Application {
     loop start()
   }
 }
-object BallTracker extends App {
-  Application.launch(classOf[BallTracker])
+object BallMovement extends App {
+  Application.launch(classOf[BallMovement])
 }
+\end{lstlisting}
 
+\begin{lstlisting}[style=ScalaStyle, caption={Ball movement \code{Draw} object}, label={lst:ball-full}]
 object Draw {
 
   def draw(pos: Position, setpoint: Position, acc: Acceleration, history: History)(implicit gc: GraphicsContext) $=$ {
@@ -152,7 +155,9 @@ object Draw {
     }
   }
 }
+\end{lstlisting}
 
+\begin{lstlisting}[style=ScalaStyle, caption={Ball movement control}, label={lst:ball-full}]
 package object ballmovement {
 
   val ballRadius $=$ 20.0
@@ -163,16 +168,6 @@ package object ballmovement {
   type Velocity $=$ (Double, Double)
   type Acceleration $=$ (Double, Double)
   type History $=$ mutable.Queue[Position]
-
-  implicit class Tuple2Math[X: Numeric, Y: Numeric](val src: (X, Y)) {
-    import Numeric.Implicits._
-    def +(other: (X, Y)) $=$ (src._1 + other._1, src._2 + other._2)
-    def -(other: (X, Y)) $=$ (src._1 - other._1, src._2 - other._2)
-    def *(scalar: Double) $=$ (src._1.toDouble * scalar, src._2.toDouble * scalar)
-    def map[Z](f: X $\Rightarrow$ Z)(implicit ev: Y $=:=$ X): (Z, Z) $=$ {
-      ((x: X, y: Y) $\Rightarrow$ (f(x), f.compose(ev)(y))).tupled(src)
-    }
-  }
   
   implicit def toHandler[T $<:$ Event](action: T $\Rightarrow$ Unit): EventHandler[T] $=$ {
     new EventHandler[T] { override def handle(e: T): Unit $=$ action(e) }
@@ -182,15 +177,19 @@ package object ballmovement {
     new Runnable { override def run() $=$ runnable() }
   }
 
-  case class Ball(acceleration: Acceleration, velocity: Velocity, position: Position) {
-    def accelerate(acc: Acceleration): Ball $=$ {
-      Ball(acc, velocity + acc, position + velocity + acc)
-    }
+  implicit class Tuple2Math[X: Numeric, Y: Numeric](val src: (X, Y)) {
+    import Numeric.Implicits._
+    def +(other: (X, Y)) $=$ (src._1 + other._1, src._2 + other._2)
+    def -(other: (X, Y)) $=$ (src._1 - other._1, src._2 - other._2)
+    def *(scalar: X)(implicit ev: Y $=:=$ X) $=$ (scalar * src._1, scalar * src._2)
+    def map[Z](f: X $\Rightarrow$ Z)(implicit ev: Y $=:=$ X): (Z, Z) $=$ (f(src._1), f(src._2))
+  }
+
+  case class Ball(acc: Acceleration, vel: Velocity, pos: Position) {
+    def accelerate(nAcc: Acceleration) $=$ Ball(nAcc, vel + nAcc, pos + vel + nAcc)
   }
   object Ball {
-    def apply(radius: Double): Ball $=$ {
-      Ball((0.0, 0.0), (0.0, 0.0), (radius, radius))
-    }
+    def apply(radius: Double) $=$ Ball((0.0, 0.0), (0.0, 0.0), (radius, radius))
   }
 }
 \end{lstlisting}

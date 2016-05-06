@@ -57,9 +57,8 @@ implicit class Tuple2Math[X: Numeric, Y: Numeric](val src: (X, Y)) {
   import Numeric.Implicits._
   def +(other: (X, Y)) $=$ (src._1 + other._1, src._2 + other._2)
   def -(other: (X, Y)) $=$ (src._1 - other._1, src._2 - other._2)
-  def *[Z](scalar: Double) $=$ (src._1.toDouble * scalar, src._2.toDouble * scalar)
-  def map[Z](f: X $\Rightarrow$ Z)(implicit ev: Y $=:=$ X): (Z, Z) $=$
-    ((x: X, y: Y) $\Rightarrow$ (f(x), f.compose(ev)(y))).tupled(src)
+  def *(scalar: X)(implicit ev: Y $=:=$ X) $=$ (scalar * src._1, scalar * src._2)
+  def map[Z](f: X $\Rightarrow$ Z)(implicit ev: Y $=:=$ X): (Z, Z) $=$ (f(src._1), f(src._2))
 }
 
 case class Ball(acc: Acceleration, vel: Velocity, pos: Position) {
@@ -85,9 +84,9 @@ To transform a distance into an acceleration, we can use the power of the PID co
 
 Both the PID controller and the feedback system are implemented in \Cref{lst:ball-feedback}. After some initialization we define an iteration of the controller following \Cref{eq:proportional-control,eq:integral-control-discrete,eq:derivative-control} in the \code{pid} function on \cref{line:pid-function}. Again notice that this operates on the tuple types and uses the operators defined in \Cref{lst:ball-physics}. This function returns a new \code{Acceleration} which corresponds to the control input as described above.
 
-The PID controller is then used in the construction of the feedback cycle (\cref{line:update}). It is first scaled down in such a way that it has an absolute maximum acceleration $0.2$, after which it is fed into the controlled system. This calls the \code{accelerate} function on the \code{Ball} (\Cref{lst:ball-physics} \cref{line:accelerate}), which calculates the ball's new velocity and position. The new state is then stored in the \code{ball} variable, which represents the latest control output. The rest of this function deals with managing the history and redrawing the application, which are considered not relevant for the implementation of the feedback system itself.
+The PID controller is then used in the construction of the feedback cycle (\cref{line:update}). It is first scaled down in such a way that it has an absolute maximum acceleration $0.2$, after which it is fed into the controlled system. This calls the \code{accelerate} function on the \code{Ball} (\Cref{lst:ball-physics} \cref{line:accelerate}), which calculates the ball's new velocity and position. The new state is then stored in the \code{ball} variable, which represents the latest control output. The rest of this function deals with managing the history and redrawing the application, which are considered not relevant for the implementation of the feedback system itself. The omitted code can be found in \Cref{app:ball-movement}.
 
-Now that the feedback cycle is implemented, we can plug this in a JavaFx application that contains the canvas on which the application is drawn, as well as assigning the setpoint value and looping through the feedback cycle every 16 milliseconds. The code for this can be found in \Cref{lst:ball-drawing}.
+Now that the feedback cycle is implemented, we can plug this in a JavaFx application that contains the canvas on which the application is drawn, as well as assigning the setpoint value and looping through the feedback cycle every 16 milliseconds. The code for this can be found in \Cref{app:ball-movement} as well.
 
 As one can see from the code, there is not much room in the feedback system to work on the performance or accuracy of the ball movement control. The controlled system, in \Cref{lst:ball-feedback} consisting of the two \textit{sigma}s and the \textit{DRAW}, is fixed by the equations in \ref{eq:motion}. Also the \textit{position} block is not something that can improve the performance and accuracy. The only place to do so are the three controller gains in the PID controller function. In \Cref{lst:ball-feedback} \cref{line:pid-function} we set these values to $k_p = 3.0$, $k_i = 0.0001$ and $k_d = 80.0$\footnote{We will refer to these values as \textit{default values}.}. These values originate from the original version of this application by Nikita Leshenko \cite{nikital-balltracker}. In his implementation one can also alter these values and see how they affect the performance and accuracy of the ball movement.
 
@@ -97,8 +96,8 @@ var ball $=$ Ball(ballRadius)
 var setpoint $=$ ball.position
 var prevError, integral $=$ (0.0, 0.0)
 
-val history $=$ new History
-var historyTick $=$ 0
+// initializing history
+// ...
 
 def pid: Acceleration $=$ { |\label{line:pid-function}|
   val (kp, ki, kd) $=$ (3.0, 0.0001, 80.0)
@@ -112,46 +111,14 @@ def pid: Acceleration $=$ { |\label{line:pid-function}|
 }
 
 def update(implicit gc: GraphicsContext): Unit $=$ { |\label{line:update}|
-  ball $=$ ball accelerate (pid map (a $\Rightarrow$ math.max(math.min(a, 0.2), -0.2)))
+  val acceleration $=$ pid map (a $\Rightarrow$ math.max(math.min(a, 0.2), -0.2))
+  ball $=$ ball accelerate acceleration
 
   // managing the history
-  historyTick $+=$ 1
-  if (historyTick $==$ 5) {
-    historyTick $=$ 0
-    if (history.size $>=$ 50)
-      history.dequeue
-    history enqueue ball.position
-  }
+  // ...
 
   // drawing all the elements
-  Platform runLater (() $\Rightarrow$ Draw.draw(ball.position, setpoint, ball.acceleration, history))
-}
-\end{lstlisting}
-\begin{lstlisting}[style=ScalaStyle, caption={Ball drawing}, label={lst:ball-drawing}]
-class BallTracker extends Application {
-  // code from Listing 3.2 goes here
-
-  def start(stage: Stage) $=$ {
-    val canvas $=$ new Canvas(width, height)
-    val root $=$ new StackPane(canvas)
-    root setAlignment Pos.TOP_LEFT
-    root.addEventHandler(MouseEvent.MOUSE_CLICKED,
-        (e: MouseEvent) $\Rightarrow$ setpoint $=$ (e.getX, e.getY))
-
-    implicit val gc $=$ canvas getGraphicsContext2D
-    var running $=$ true
-    val loop $=$ new Thread(() $\Rightarrow$ while (running) { update; Thread.sleep(16) })
-
-    stage setOnHidden ((_: WindowEvent) $\Rightarrow$ { running $=$ false; loop.join() })
-    stage setScene new Scene(root, width, height)
-    stage setTitle "Balltracker"
-    stage show()
-
-    loop.start()
-  }
-}
-object BallTracker extends App {
-  Application.launch(classOf[BallTracker])
+  // ...
 }
 \end{lstlisting}
 \end{minipage}
