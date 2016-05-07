@@ -1,4 +1,4 @@
-package report.balltracker.imperative
+package report.balltracker.imperative_experiments
 
 import java.io.File
 import java.util.UUID
@@ -8,7 +8,7 @@ import javafx.embed.swing.SwingFXUtils
 import javafx.geometry.Pos
 import javafx.rx.{toHandler, toRunnable}
 import javafx.scene.canvas.{Canvas, GraphicsContext}
-import javafx.scene.input.{KeyEvent, MouseEvent}
+import javafx.scene.input.KeyEvent
 import javafx.scene.layout.StackPane
 import javafx.scene.{Scene, SnapshotParameters}
 import javafx.stage.{Stage, WindowEvent}
@@ -28,13 +28,20 @@ class BallTracker extends Application {
   var setpoint = ball.position
   var prevError, integral = (0.0, 0.0)
 
+  var error = (0.0, 0.0)
+  var derivative = (0.0, 0.0)
+
   val history = new History
   var historyTick = 0
 
+  var time = 0
+  println("time\tproportional\tintegral\tderivative\tacceleration\tvelocity\tposition")
+
   def pid: Acceleration = {
-	  val (kp, ki, kd) = (3.0, 0.0001, 80.0)
-    val error = setpoint - ball.position
-    val derivative = error - prevError
+	val (kp, ki, kd) = (3.0, 0.0, 80.0)
+
+    error = setpoint - ball.position
+    derivative = error - prevError
 
     integral = integral + error
     prevError = error
@@ -55,6 +62,11 @@ class BallTracker extends Application {
       history enqueue ball.position
     }
 
+    // pid measurement stuff
+    def print[X, Y](tuple: (X, Y)) = s"${tuple._1}"
+    println(s"$time\t${print(error)}\t${print(integral)}\t${print(derivative)}\t${print(ball.acceleration)}\t${print(ball.velocity)}\t${print(ball.position)}")
+    time += 1
+
     // drawing all the elements
     runLater (() => Draw.draw(ball.position, setpoint, ball.acceleration, history))
   }
@@ -69,7 +81,6 @@ class BallTracker extends Application {
     val canvas = new Canvas(width, height)
     val root = new StackPane(canvas)
     root setAlignment Pos.TOP_LEFT
-    root.addEventHandler(MouseEvent.MOUSE_CLICKED, (e: MouseEvent) => setpoint = (e.getX, e.getY))
 
     implicit val gc = canvas getGraphicsContext2D
     var running = true
@@ -78,14 +89,17 @@ class BallTracker extends Application {
     stage setOnHidden ((_: WindowEvent) => { running = false; loop.join() })
     val scene = new Scene(root, width, height)
     stage setScene scene
-    stage setTitle "Balltracker"
+    stage setTitle "Balltracker experiments"
     stage show()
 
     scene.addEventHandler(KeyEvent.KEY_PRESSED, (e: KeyEvent) => if (e.getText == "s") snapshot(canvas))
 
     loop start()
+
+    setpoint = (500.0, 500.0)
   }
 }
+
 object BallTracker extends App {
   Application.launch(classOf[BallTracker])
 }
