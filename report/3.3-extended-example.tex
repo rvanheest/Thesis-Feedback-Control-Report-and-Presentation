@@ -88,7 +88,7 @@ The PID controller is then used in the construction of the feedback cycle (\cref
 
 Now that the feedback cycle is implemented, we can plug this in a JavaFx application that contains the canvas on which the application is drawn, as well as assigning the setpoint value and looping through the feedback cycle every 16 milliseconds. The code for this can be found in \Cref{app:ball-movement} as well.
 
-As one can see from the code, there is not much room in the feedback system to work on the performance or accuracy of the ball movement control. The controlled system, in \Cref{lst:ball-feedback} consisting of the two \textit{sigma}s and the \textit{DRAW}, is fixed by the equations in \ref{eq:motion}. Also the \textit{position} block is not something that can improve the performance and accuracy. The only place to do so are the three controller gains in the PID controller function. In \Cref{lst:ball-feedback} \cref{line:pid-function} we set these values to $k_p = 3.0$, $k_i = 0.0001$ and $k_d = 80.0$\footnote{We will refer to these values as \textit{default values}.}. These values originate from the original version of this application by Nikita Leshenko \cite{nikital-balltracker}. In his implementation one can also alter these values and see how they affect the performance and accuracy of the ball movement.
+Notice that with this feedback system we lack the notion of an external disturbance on the system under control. In this case there is none since the system is just the two \textit{sigma}s and the \textit{DRAW}. One could argue that the changing setpoint is kind of a disturbance, although this is by definition not the case. An example of an external disturbance on this particular system could be the terrain not being flat but rather containing hills and valleys. This would influence the ball's movement because of gravity, which would add a force in a third direction. For the sake of simplicity of this example we decided to not add this feature and stick with the flat terrain. We leave implementing this feature as an exercise to the reader.
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Ball drawing}, label={lst:ball-feedback}]
@@ -123,14 +123,70 @@ def update(implicit gc: GraphicsContext): Unit $=$ { |\label{line:update}|
 \end{lstlisting}
 \end{minipage}
 
-We already discussed the setting of only having a proportional gain (set $k_i$ and $k_d$ to zero): as the ball approaches its destination, its acceleration will approach zero, meaning that the ball will not slow down but rather keeps moving with the same velocity. On the other hand, altering the default settings with a larger value for $k_p$ (for example $k_p = 5$) will cause the ball to overshoot its destination and have more oscillation around the destination before coming to a halt. A smaller value ($k_p = 1$) will have the opposite effect: it slows the ball down way too early and does not stop at the correct destination point.
+\subsection*{PID control tuning}
+As one can see from the code, there is not much room in the feedback system to work on the performance or accuracy of the ball movement control. The controlled system, in \Cref{fig:balltracker-diagram} consisting of the two \textit{sigma}s and the \textit{DRAW}, is fixed by the equations in \ref{eq:motion}. Also the \textit{position} block is not something that can improve the performance and accuracy. The only place to do so are the three controller gains in the PID controller function. In \Cref{lst:ball-feedback} \cref{line:pid-function} we set these values to $k_p = 3.0$, $k_i = 0.0001$ and $k_d = 80.0$\footnote{We will refer to these values as \textit{default values}.}. These values originate from the original version of this application by Nikita Leshenko \cite{nikital-balltracker}. In his implementation one can also alter these values and see how they affect the performance and accuracy of the ball movement.
 
-The integral controller gain is set very low by default. This is no surprise, as the previous tracking errors (the distance still to be traveled) are not of much interest for the transformation to a new acceleration. As far as we were able to observe, discarding the integral factor complete does not really hurt the performance. Increasing this value will however lead to some interesting behaviors. A value like $k_i = 0.001$ (factor 10 higher) will cause the ball to end up slightly offset of its actual destination. A value like $k_i = 0.01$ (100 times the default value) has an even more peculiar behavior as it first approaches the destination in somewhat normal fashion, then almost stops at an offset position but then creeps forward very slowly to the actual destination and holds at the correct position. This of course has to do with the relative weight of the integral part of the controller with regards to the weight of the proportional and derivative parts.
+In this section we will discuss some effects of the controller gains by altering the default values and observing how they alter the behavior of the ball's movement. For this we scale down the original application to 1 dimension, initialize the ball at position 20 (the ball is 20 units wide on the screen) and set the ball's setpoint at position 500. We let the ball move from its original position to the setpoint and meanwhile record the proportional, integral and derivative controller that make up the PID controller as well as the total acceleration\footnote{This is the acceleration before multiplying it with $0.001$ and maximizing it at $0.2$} and the balls position after applying the newest acceleration. We then plot these results, where the horizontal axis represents time, the primary vertical axis represents the accelerations and the secondary vertical axis represents the ball's position. The default behavior of the application is shown in \Cref{fig:balltracker-pid-default}.
 
-The derivative controller gain has the largest impact on the PID controller with its default value being set to $k_d = 80$. This value determines most of the oscillation in the system: the larger this value is, the less oscillation occurs. On the other hand, having a derivative controller gain that is too big is not good either as it will slow down the ball too early and make it creep towards its destination.
+We already discussed the setting of only having a proportional gain (set $k_i$ and $k_d$ to zero): as the ball approaches its destination, its acceleration will approach zero, meaning that the ball will not slow down but will rather keep moving with the same velocity. The exact behavior can be seen in \Cref{fig:balltracker-pid-kp-only}.The acceleration becomes zero as the ball reaches its setpoint, but only slows down past this point. At the time the ball comes to a hold, the distance with the setpoint is thus large that it needs to accelerate again (in the other direction). This process will repeat itself indefinitely without ever coming to a halt at the setpoint.
 
-\todo{controller tuning is trial and error to a certain extend, some emperical methods by Janert (and Hellerstein?)}
+\begin{figure}
+	\centering
+	\begin{subfigure}[b]{0.49\linewidth}
+		\includegraphics[width=\linewidth]{{figures/balltracker-pid/kp=3,ki=0.0001,kd=80}.png}
+		\caption{$k_p = 3$, $k_i = 0.0001$, $k_d = 80$ (default)}
+		\label{fig:balltracker-pid-default}
+	\end{subfigure}
+	\begin{subfigure}[b]{0.49\linewidth}
+		\includegraphics[width=\linewidth]{{figures/balltracker-pid/kp=3,ki=0,kd=0}.png}
+		\caption{$k_p = 3$, $k_i = 0$, $k_d = 0$}
+		\label{fig:balltracker-pid-kp-only}
+	\end{subfigure}
+	
+	\begin{subfigure}[b]{0.49\linewidth}
+		\includegraphics[width=\linewidth]{{figures/balltracker-pid/kp=5,ki=0.0001,kd=80}.png}
+		\caption{$k_p = 5$, $k_i = 0.0001$, $k_d = 80$}
+		\label{fig:balltracker-pid-kp-higher}
+	\end{subfigure}
+	\begin{subfigure}[b]{0.49\linewidth}
+		\includegraphics[width=\linewidth]{{figures/balltracker-pid/kp=1,ki=0.0001,kd=80}.png}
+		\caption{$k_p = 1$, $k_i = 0.0001$, $k_d = 80$}
+		\label{fig:balltracker-pid-kp-lower}
+	\end{subfigure}
+	
+	\begin{subfigure}[b]{0.49\linewidth}
+		\includegraphics[width=\linewidth]{{figures/balltracker-pid/kp=3,ki=0,kd=80}.png}
+		\caption{$k_p = 3$, $k_i = 0$, $k_d = 80$}
+		\label{fig:balltracker-pid-ki-zero}
+	\end{subfigure}
+	\begin{subfigure}[b]{0.49\linewidth}
+		\includegraphics[width=\linewidth]{{figures/balltracker-pid/kp=3,ki=0,kd=80,diff}.png}
+		\caption{$k_p = 3$, $k_i = 0$, $k_d = 80$}
+		\label{fig:balltracker-pid-ki-zero-diff}
+	\end{subfigure}
+	
+	\begin{subfigure}[b]{0.49\linewidth}
+		\includegraphics[width=\linewidth]{{figures/balltracker-pid/kp=3,ki=0.001,kd=80}.png}
+		\caption{$k_p = 3$, $k_i = 0.001$, $k_d = 80$}
+		\label{fig:balltracker-pid-ki-higher}
+	\end{subfigure}
+	\begin{subfigure}[b]{0.49\linewidth}
+		\includegraphics[width=\linewidth]{{figures/balltracker-pid/kp=3,ki=0.01,kd=80}.png}
+		\caption{$k_p = 3$, $k_i = 0.01$, $k_d = 80$}
+		\label{fig:balltracker-pid-ki-highest}
+	\end{subfigure}
+	\caption{Various values for the controller gains in a PID controller}
+	\label{fig:pid-settings}
+\end{figure}
 
-\todo{refer to the full code in the appendix (see \Cref{lst:ball-full}), especially the Draw object}
+On the other hand, altering the default settings with a larger value for proportional controller gain (for example $k_p = 5$) will cause the ball to overshoot its destination and have more oscillation around the destination before coming to a halt (\Cref{fig:balltracker-pid-kp-higher}). A smaller value ($k_p = 1$) will have the opposite effect (\Cref{fig:balltracker-pid-kp-lower}): it slows the ball down too early and also deviates a bit from the setpoint when it halts (position 503 where 500 was expected). This is expected and according to the theory as described earlier as well as by Janert \cite{janert2013-feedback}: a too high controller gain will cause overshooting the setpoint and oscillations, whereas a too low controller gain will cause undershooting and approaching the setpoint too slow.
 
-\todo{Finally discuss external disturbances}
+The integral controller gain is set very low by default. This is no surprise, as the previous tracking errors (the distance still to be traveled) are not of much interest for the transformation to a new acceleration. As far as we were able to observe, discarding the integral factor complete does not really hurt the performance; in fact it only improves the accuracy (\Cref{fig:balltracker-pid-ki-zero,fig:balltracker-pid-ki-zero-diff}).
+
+Increasing this value will however lead to some interesting behaviors. A value like $k_i = 0.001$ (10x higher than default) will cause the ball to end up slightly offset of its actual destination (\Cref{fig:balltracker-pid-ki-higher}). A value like $k_i = 0.01$ (100x the default value) has an even more peculiar behavior as it first approaches the destination in somewhat normal fashion, then almost stops at an offset position and creeps forward very slowly to the actual destination and holds at the correct position. This of course has to do with the relative weight of the integral part of the controller with regards to the weight of the proportional and derivative parts.
+
+The derivative controller gain has the largest relative impact on the PID controller with its default value being set to $k_d = 80$. This value determines most of the oscillation in the system: the larger this value is, the less oscillation occurs. On the other hand, having a derivative controller gain that is too big is not good either as it will slow down the ball too early and make it creep towards its destination.
+
+Tuning a PID controller is mainly a process of trial and error. One needs to find an optimal set of three values for the controller gains and with that has a very limited number of parameters to tune. For applications in physics there exist equations that give accurate values for these three parameters, although these only work correctly if the behavior of the system under control is fully known and can be translated in differential equations\footnote{Technically this could have been done for this example since it comes straight from physics, but for the sake of demonstrating it the context of computer science we choose not to do this.}.
+
+Janert spends a couple of chapters on the topic of controller tuning in de context of computer science \cite{janert2013-feedback} and goes into much detail to come up with equations that can give a first idea of the range in which to search for the optimal controller gains. This however are just an indication and still require experimentation to come up with the best solutions.
