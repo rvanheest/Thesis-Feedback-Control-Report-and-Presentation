@@ -13,7 +13,7 @@ object CallstackBlocking extends App {
 
 	val timer = Observable(1, 2, 3, 4)
 		.tee(i => println("[" + timePassed + "] emitted - " + i))
-	val subject = Subject[Int]
+	val subject = Subject[Int]()
 
 	subject.tee(i => println("[" + timePassed + "] before - " + i))
 		.tee(_ => Thread.sleep(1000))

@@ -9,10 +9,10 @@ object IterableObservable {
 	}
 	trait Iterator[T] {
 		def moveNext(): Boolean
-		def current(): T
+		def current: T
 		
 		def getNext(): Try[Option[T]] = {
-			Try(moveNext()).map(b => if (b) Option(current()) else Option.empty)
+			Try(moveNext()).filter(identity).map(_ => Option(current))
 		}
 	}
 }

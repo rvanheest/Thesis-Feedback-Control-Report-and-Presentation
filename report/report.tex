@@ -20,8 +20,14 @@
 \usepackage{float} % places the images at precisely the location in the LaTeX code
 \usepackage[bottom]{footmisc} % fix \footnote{} position at the bottom of the page
 \usepackage{datetime}
+\usepackage{caption} % used for multiple images in one figure
+\usepackage{subcaption} % used for multiple images in one figure
+\usepackage[nameinlink]{cleveref}
+\usepackage[toc,page]{appendix}
 
 \newdateformat{monthyeardate}{\monthname[\THEMONTH], \THEYEAR}
+
+\crefname{appsec}{Appendix}{Appendices}
 
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{\large @TODO: #1}}}
 \newcommand{\code}[1]{\sloppy{\mbox{\texttt{#1}}}}
@@ -117,6 +123,12 @@
 
 \clearpage
 \input{6.0-conclusion-and-future-work}
+
+\clearpage
+\begin{appendices}
+\crefalias{chapter}{appsec}
+\input{appendix1.0-balltracker-imperative}
+\end{appendices}
 
 \clearpage
 \phantomsection\addcontentsline{toc}{chapter}{References}

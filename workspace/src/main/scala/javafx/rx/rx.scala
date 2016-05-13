@@ -9,6 +9,8 @@ import javafx.scene.Node
 import javafx.scene.input.InputEvent
 import javafx.scene.input.MouseEvent
 
+import scala.language.implicitConversions
+
 package object rx {
 
 	implicit def toHandler[T <: Event](action: T => Unit): EventHandler[T] = {
@@ -16,7 +18,7 @@ package object rx {
 	}
 
 	implicit def toRunnable(runnable: () => Unit): Runnable = {
-		new Runnable { override def run = runnable() }
+		new Runnable { override def run() = runnable() }
 	}
 
 	implicit class Events(val node: Node) extends AnyVal {

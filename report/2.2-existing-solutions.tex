@@ -9,9 +9,9 @@ For a hot \obs this kind of defense mechanism is perfect, as the speed at which 
 We are aware of the fact that these operators also have use cases other than avoiding overproduction, such as edge detection or calculating the derivative of a stream of numbers. However, these use cases are not relevant for this thesis.
 
 \subsection{Callstack blocking}
-Subscribing to an \obs is basically nothing more than supplying an \obv to the function within \code{Observable.create} and \emph{sequentially} executing this function using this provided \obv. Once an element is emitted by the source, all operations in the \obs sequence are executed on that element before a second element is emitted. In the sequence of operators in \autoref{lst:operators-obs}, first all operations on $1$ are performed, before $2$ is emitted by the \obs (and then discarded by \code{filter}). This is also the case in \autoref{lst:observeOn} up to line~\ref{line:observeOn-in-observeOn}, after which the elements are scheduled on a different thread and hence are further processed in parallel with emitting new elements from the source.
+Subscribing to an \obs is basically nothing more than supplying an \obv to the function within \code{Observable.create} and \emph{sequentially} executing this function using this provided \obv. Once an element is emitted by the source, all operations in the \obs sequence are executed on that element before a second element is emitted. In the sequence of operators in \Cref{lst:operators-obs}, first all operations on $1$ are performed, before $2$ is emitted by the \obs (and then discarded by \code{filter}). This is also the case in \Cref{lst:observeOn} up to \cref{line:observeOn-in-observeOn}, after which the elements are scheduled on a different thread and hence are further processed in parallel with emitting new elements from the source.
 
-The order of operations is designed in such a way that it allows for lazy evaluation. If a cold \obs contains 5 elements and the operator sequence contains the operator \code{take(2)} (see \autoref{lst:lazy}), only the first 2 elements from this \obs will be evaluated by the upper half of the operator sequence, rather than all 5. After the second element has passed \code{take}, it sends an \code{onCompleted()} downstream, right after the second \code{onNext}, causing the stream to end without evaluating the other 3 elements.
+The order of operations is designed in such a way that it allows for lazy evaluation. If a cold \obs contains 5 elements and the operator sequence contains the operator \code{take(2)} (see \Cref{lst:lazy}), only the first 2 elements from this \obs will be evaluated by the upper half of the operator sequence, rather than all 5. After the second element has passed \code{take}, it sends an \code{onCompleted()} downstream, right after the second \code{onNext}, causing the stream to end without evaluating the other 3 elements.
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Lazy evaluation}, label={lst:lazy}]
@@ -25,17 +25,17 @@ Observable(1, 2, 3, 4, 5)
 
 Following this order of operations, we can conclude that basically every operator in the operator sequence is in a sense blocking the callstack during its computation and thereby preventing the source from emitting a next element until the previous element has gone through the whole operator sequence. This is the reason why we concluded in the previous section that avoiding overproduction on a cold synchronous stream does not make any sense. The rate of emission is already determined by the speed in which all operators together are executed.
 
-This is also true for all kind of stream, whether hot or cold, whether or not it has latency and no matter what kind of source emits the data. This may seem quite surprising, especially for the hot \obs, since we always claimed that this type of stream is only controlled by its outside environment. However, an example of this is shown in \autoref{lst:blocking-hot-obs}. Here a cold \obs is subscribed to a \subj (line~\ref{line:blocking-hot-subject-subscribe}), making it hot according to section~\ref{subsec:subjects}. At several points in the operator sequence the time passed since \code{start} is measured and printed. At line~\ref{line:blocking-hot-sleep} the callstack is blocked for 1 second by pausing the thread on which this whole process is running. The console output of executing \autoref{lst:blocking-hot-obs} is provided in \autoref{lst:console-output-blocking-hot}\footnote{Due to the inner workings of the JVM, the times shown here may vary by a couple of milliseconds in every execution.}.
+This is also true for all kind of stream, whether hot or cold, whether or not it has latency and no matter what kind of source emits the data. This may seem quite surprising, especially for the hot \obs, since we always claimed that this type of stream is only controlled by its outside environment. However, an example of this is shown in \Cref{lst:blocking-hot-obs}. Here a cold \obs is subscribed to a \subj (\cref{line:blocking-hot-subject-subscribe}), making it hot according to section~\ref{subsec:subjects}. At several points in the operator sequence the time passed since \code{start} is measured and printed. At \cref{line:blocking-hot-sleep} the callstack is blocked for 1 second by pausing the thread on which this whole process is running. The console output of executing \Cref{lst:blocking-hot-obs} is provided in \Cref{lst:console-output-blocking-hot}\footnote{Due to the inner workings of the JVM, the times shown here may vary by a couple of milliseconds in every execution.}.
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Applying callstack blocking on a hot \obs}, label={lst:blocking-hot-obs}]
-def now = System.currentTimeMillis()
-val start = now
-def timePassed = now - start
+def now $=$ System.currentTimeMillis()
+val start $=$ now
+def timePassed $=$ now - start
 
-val timer = Observable(1, 2, 3, 4)
+val timer $=$ Observable(1, 2, 3, 4)
     .tee(i $\Rightarrow$ println("[" + timePassed + "] emitted - " + i))
-val subject = Subject[Int]
+val subject $=$ Subject[Int]()
 
 subject.tee(i $\Rightarrow$ println("[" + timePassed + "] before - " + i))
     .tee(_ $\Rightarrow$ Thread.sleep(1000)) |\label{line:blocking-hot-sleep}|
@@ -45,7 +45,7 @@ timer.subscribe(subject) |\label{line:blocking-hot-subject-subscribe}|
 \end{minipage}
 
 \begin{minipage}{\linewidth}
-\begin{lstlisting}[style=ScalaStyle, caption={Console output from \autoref{lst:blocking-hot-obs}}, label={lst:console-output-blocking-hot}]
+\begin{lstlisting}[style=ScalaStyle, caption={Console output from \Cref{lst:blocking-hot-obs}}, label={lst:console-output-blocking-hot}]
 [47] emitted - 1
 [47] before - 1
 [1059] after - 1
