@@ -25,9 +25,9 @@ class BallTracker extends Application {
   val pidY = Controllers.pidController(kp, ki, kd)
 
   def feedback(clicks: Observable[Position]): Component[Unit, Ball2D] = {
-    val fbcX = Component[Position, Pos](_._1) >>> feedbackSystem(pidX)
-    val fbcY = Component[Position, Pos](_._2) >>> feedbackSystem(pidY)
-    Component.from(clicks) >>> fbcX.zip(fbcY)(Ball2D(_, _))
+    val fbcX = Component.create[Position, Pos](_._1) >>> feedbackSystem(pidX)
+    val fbcY = Component.create[Position, Pos](_._2) >>> feedbackSystem(pidY)
+    Component.from(clicks) >>> fbcX.combine(fbcY)(Ball2D(_, _))
   }
 
   def feedbackSystem(pid: Component[Double, Double]): BallFeedbackSystem = {
