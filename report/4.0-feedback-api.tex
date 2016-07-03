@@ -5,11 +5,143 @@ While studying the principles of feedback control, we discovered that there are 
 In this chapter we present our own API for creating and executing feedback systems that can potentially be used in production software. \todo{rest of the introduction and layout of this chapter}
 
 \section{Related work}
-One of the few libraries we found is described by Janert in his book ``\textit{Feedback Control for Computer Systems}'' \cite{janert2013-feedback}. Janert presents a small framework for simulating feedback loops with the purpose of being a teaching tool that makes it simple and transparent to demonstrate the algorithms presented in several case studies and to encourage experimentation. He explicitly states that little emphasis was placed on elegant implementations or time efficiency and that this framework is not meant to be used in production software. What distinguishes his framework from other simulation frameworks for control systems, however, is way that the components that make up a feedback loop are implemented. As discussed before, most feedback systems in physics and engineering are described in terms of complex mathematics, using transfer functions and Laplace transformations, that operate in the frequency domain. Janert's API, however, allows algorithms to be implemented in the time domain, which is a more natural representation to software developers and people that are not familiar to the mathematics based approach.
+One of the few libraries we found is described by Philip Janert in his book ``\textit{Feedback Control for Computer Systems}'' \cite{janert2013-feedback}. Janert presents a small framework for simulating feedback loops with the purpose of being a teaching tool that makes it simple and transparent to demonstrate the algorithms presented in several case studies and to encourage experimentation. He explicitly states that little emphasis was placed on elegant implementations or time efficiency and that this framework is not meant to be used in production software. What distinguishes his framework from other simulation frameworks for control systems (for example MatLab \todo{cite http://nl.mathworks.com/help/control/ref/feedback.html}), however, is the way that the components that make up a feedback loop are implemented. As discussed before, most feedback systems in physics and engineering are described in terms of complex mathematics, using transfer functions and Laplace transformations, that operate in the frequency domain. Janert's API, however, allows algorithms to be implemented in the time domain, which is a more natural representation to software developers and people that are not familiar to the mathematics based approach.
 
-One of the central aspects of Janert's framework is the \code{Component} class which contains two methods with the following signatures: \code{def work(u: Double): Double}, which encapsulates the dynamic function of a component, called once every feedback cycle and \code{def monitoring: String}, which is just a convenience function and allows for a uniform approach to logging. All components, controlled systems, controllers and more advanced building blocks like actuators and filters, are just subclasses of this \code{Component} that implement these two methods. The feedback system is then simulated using a loop that iterates over time stamps and which calls the \code{work} method on the next \code{Component} with the result of calling the \code{work} method of the previous \code{Component}. Finally at the end of each loop cycle the result is printed to the console using the \code{monitor} method of the \code{Component} that represents the system under control.
+One of the central aspects of Janert's framework is the \code{Component} class which contains two methods with the following signatures: \code{def work(u: Double): Double}, which encapsulates the dynamic function of a component, called once every feedback cycle and \code{def monitoring: String}, which is just a convenience function and allows for a uniform approach to logging. All components (controlled systems, controllers and more advanced building blocks like actuators and filters) are just subclasses of \code{Component} that implement these two methods. The feedback system is then simulated using a loop that iterates over time stamps and which calls the \code{work} method on the next \code{Component} with the result of calling the \code{work} method of the previous \code{Component}. Finally at the end of each loop cycle the result is printed to the console using the \code{monitor} method of the \code{Component} that represents the system under control.
 
-As pointed out earlier, this framework does well for simulation but is not really useful for production software. One concern with this framework is that it performs a feedback cycle with regular intervals between each other. However, one can easily imagine a controlled system which produces a control output very irregularly. In that case the feedback cycle has to respond to the emission of a new data point rather than asking the controlled system for its next input. Another concern related to this is the ability to handle concurrency appropriately. A component in the feedback loop might perform some kind of timing related work that requires running on a different thread or thread pool. Finally we should note that the subclasses of \code{Component} have to use mutable state for mutable state, which is something that computer science has come to terms with as not being so practical in some cases as we once thought it would be. Especially when introducing concurrency, mutable state is something you want to avoid at all cost! \todo{keep these in mind when developing our own API and refer to these concerns there!}
+As pointed out by Janert, this framework does well for simulation but is not really useful for production software. One concern with this framework is that it performs a feedback cycle with regular intervals between each other. However, one can easily imagine a controlled system which produces a control output very irregularly. In that case the feedback cycle has to respond to the emission of a new data point rather than asking the controlled system for its next input. Another concern related to this is the ability to handle concurrency appropriately. A component in the feedback loop might perform some kind of timing related work that requires running on a different thread or thread pool. Finally we should note that the subclasses of \code{Component} have to use mutable state if they want to store any data. Think of the Integral Controller, which has to store its current sum. Mutable state is something that computer science has come to terms with as not being so practical in some cases as we once thought it would be. Especially when introducing concurrency, mutable state is something you want to avoid at all cost! \todo{keep these in mind when developing our own API and refer to these concerns there!}
+
+\section{Towards a feedback API}
+If we want to develop a library or API for feedback control we should keep a couple of things in mind. First of all the API should be production worthy: it should be able to drive production software/hardware and it should be easy for the developers of those systems to put together a feedback loop, without having to understand much about the mathematics that is going on in theoretical control theory. Also the concerns mentioned in the previous section should be kept in mind: the API should not rely on any form of mutable state if this is not desired by the developer, it should be easily able to support concurrency and asynchronicity and should not rely on any regularity in feedback cycles.
+
+The idea by Janert to model a feedback system in the same way as it is drawn (see for example \cref{fig:balltracker-diagram}) is something that looks very appealing to use as a foundation of our API. This means that we create a feedback system by composing smaller entities or by chaining transformations. In the same way for example Scala's collection API is build up, using (monadic) operators to transform and manipulate a collection. Likewise we will use higher order functions to compose feedback systems.
+
+Some of the basic composition operations that are required for this to work are \textit{sequential composition}, which passes the output of the first component as the input of the second component, \textit{parallel composition}, which passes its input to multiple components and combines the output of each component into a single value using a combinator function, \textit{merging the output of two components} into a single value and \textit{feeding back the output of a component to its input} to create a circuit or feedback loop. Other composition operators that one can imagine are operators like the ones found monadic APIs in Scala or Java 8 such as collections, \code{Future}, \code{Try}, \code{Option} or the Rx \obs. Examples of these are \code{map}, \code{filter}, \code{flatMap}, \code{take}, \code{drop}, \code{scan}, etcetera.
+
+\subsection{Derivation}
+To get to a suitable API we must first of all observe that a component can be thought of as a Mealy Machine \cite{mealy1955-mealymachine}. This is a special variant of the finite-state machine whose output values are determined by both its current input and its current state. It can mathematically be described as a 6-tuple $(\Sigma, \Gamma, S, s_0, \delta, \omega)$ \cite{carroll1989-theoryoffiniteautomata} where
+
+\begin{itemize}
+	\item $\Sigma$ denotes the input alphabet
+	\item $\Gamma$ denotes the output alphabet
+	\item $S$ denotes the finite nonempty set of states
+	\item $s_0$ denotes the start (or initial) state; $s_0 \in S$
+	\item $\delta$ denotes the state transition function; $\delta: S \times \Sigma \rightarrow S$
+	\item $\omega$ denotes the output function; $S \times \Sigma \rightarrow \Gamma$
+\end{itemize}
+
+Note that the two functions $\delta$ and $\omega$ can be coalesced into a single function $\lambda: S \times \Sigma \rightarrow S \times \Gamma$.
+
+This function $\lambda$ can also be written as a type definition in Scala:
+
+\begin{lstlisting}[style=InlineScalaStyle]
+type Component[S, I, O] $=$ (S, I) $\Rightarrow$ (S, O)
+\end{lstlisting}
+
+Notice that we use \code{I} and \code{O} to denote the input alphabet $\Sigma$ and output alphabet $\Gamma$ respectively. Equivalent to this type definition is the following static object \comp, containing a single function \code{apply}.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+object Component {
+  def apply[I, O, S](s: S, i: I): (S, O)
+}
+\end{lstlisting}
+
+We can now rewrite \comp to be an interface and put the state \code{S} inside \comp implicitly. This removes the need for an input parameter of type \code{S} in the \code{apply} method, since the state is then contained inside the \code{this} pointer. Instead of the \code{S} in the return type we now, however, have to return a \comp that contains the output state.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+trait Component[I, O] {
+  // implicit state in here
+  def apply(i: I): (Component[I, O], O)
+}
+\end{lstlisting}
+
+Instead of returning a tuple, the \code{apply} method can be split into two separate methods. \code{update} will accept something of input type \code{I} and return a new \comp, containing its new state. The output value of the transformation on the original component together with \code{I} can be retrieved from the newly returned \comp using the \code{action} method.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+trait Component[I, O] {
+  // implicit state in here
+  def update(i: I): Component[I, O]
+  def action: O
+}
+\end{lstlisting}
+
+This version of \comp gives us a first suitable implementation for composing over components. We will refer to this version as the \textit{Immutable Component}. Notice that this version is actually used in our blog post ``\textit{Feedback Control for Hackers}'' \cite{heest2015-feedback-for-hackers} as the basis of the simulation framework used in several case studies.
+
+As an example of a component that inherits this interface, we will show an implementation of a component that maintains a running average of its input elements.
+
+\begin{lstlisting}[style=ScalaStyle]
+class RunningAverage(n: Int, queue: Queue[Double])
+      extends Component[Double, Double] {
+
+  def update(u: Double): RunningAverage $=$ {
+    if (queue.length $==$ n) queue.dequeue
+    queue.enqueue(u)
+
+    new RunningAverage(n, queue)
+  }
+
+  def action: Double $=$ queue.sum / queue.length
+}
+\end{lstlisting}
+
+Here the internal state of the \comp, that was earlier referred to as \code{S}, consists of both the integer \code{n} (representing the number elements over which it has to calculate the running average), and the queue containing at most the latest \code{n} numbers that it received. Notice that \code{Component[Double, Double]} here specifies that the input type (the data type it can receive to calculate the average over) and the output type (the data type of the average) are both \code{Double}. The \code{action} method is the one that calculates the actual average using the numbers that are present in the queue. On the other hand, the receiving of the next value as well as the book keeping of the queue are done by the \code{update} method, which returns a new instance of \code{RunningAverage} with the new state of the queue, including the new element and excluding the oldest element (if the queue was already full).
+
+The observant reader will already have noticed the striking similarity between this interface and the \code{Component} interface by Janert. In fact, the \comp interface above is the immutable variant of Janert's interface. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

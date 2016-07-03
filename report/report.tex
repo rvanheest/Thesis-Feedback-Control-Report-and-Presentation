@@ -44,6 +44,7 @@
 \newcommand{\id}{\texttt{IDisposable}\xspace}
 \newcommand{\itr}{\texttt{Iterator}\xspace}
 \newcommand{\itb}{\texttt{Iterable}\xspace}
+\newcommand{\comp}{\texttt{Component}\xspace}
 
 \definecolor{pgreen}{rgb}{0,0.5,0}
 \definecolor{pgrey}{rgb}{0.5,0.5,0.5}
@@ -64,6 +65,27 @@
   moredelim=[is][\textcolor{pgrey}]{\%\%}{\%\%},
   numbers=left,
   numberstyle=\color{pgrey},
+  columns=flexible,
+  mathescape=true,
+  escapechar=|
+}
+\lstdefinestyle{InlineScalaStyle}{
+  frame=none,
+  language=Scala,
+  xleftmargin=.25in,
+  xrightmargin=.25in,
+  showspaces=false,
+  showtabs=false,
+  breaklines=true,
+  showstringspaces=false,
+  breakatwhitespace=true,
+  commentstyle=\color{pgreen},
+  keywordstyle=\color{blue},
+  stringstyle=\color{mauve},
+  basicstyle=\ttfamily,
+  moredelim=[il][\textcolor{pgrey}]{$$},
+  moredelim=[is][\textcolor{pgrey}]{\%\%}{\%\%},
+  numbers=none,
   columns=flexible,
   mathescape=true,
   escapechar=|
