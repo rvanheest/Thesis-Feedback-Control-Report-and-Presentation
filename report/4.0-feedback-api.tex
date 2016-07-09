@@ -129,17 +129,125 @@ In order to move toward this goal we will again perform a couple of transformati
 
 \[A \rightarrow B \ \ \ \ \Leftrightarrow \ \ \ \ (A, B \rightarrow C) \rightarrow C\]
 
-The new function's second argument is called the continuation, which specifies what to do with the original function's output afterwards. In the code below we define two functions \code{f} and \code{g} to be the original function and the continuation-passing-style function respectively. We also define a function \code{h} which transforms a \code{B} into a \code{C}. With this we can show that first calling \code{f} and then \code{h} gives us the same result as calling \code{g} with \code{h} as its second parameter.
+The new function's second argument is called the continuation, which specifies what to do with the original function's output afterwards. In the code below we define two functions \code{f} and \code{g} to be the original function and the continuation-passing-style function respectively. We also define a function \code{h} which transforms a \code{B} into a \code{Unit}. With this we can show that first calling \code{f} and then \code{h} gives us the same result as calling \code{g} with \code{h} as its second parameter.
 
 \begin{lstlisting}[style=InlineScalaStyle]
 def f(a: A): B
-def g(a: A, cont: B $\Rightarrow$ C): C
-def h(b: B): C
+def g(a: A, cont: B $\Rightarrow$ Unit): Unit
+def h(b: B): Unit
 
 h(f(a)) $==$ g(a, h)
 \end{lstlisting}
 
-A second transformation that we require comes from category theory and is called a \textit{Cartesian closed category}. We will not go into the mathematical details, but just focus on the application in the field of programming, types and function. 
+A second transformation that we require is the notion of currying, which is derived from category theory, known as a \textit{Cartesian closed category}. We will not go into the mathematical details, but just focus on the application in the field of programming, types and function. Currying basically means that you can split a list of function parameters into an equivalent series of functions. For example, given a function \code{f} with parameters of type \code{A} and \code{B} and return type \code{C}, we can define an equivalent function \code{g} which is the curried form of \code{f}:
+
+\begin{lstlisting}[style=InlineScalaStyle]
+def f(a: A, b: B): C
+def g(a: A)(b:B): C
+\end{lstlisting}
+
+Function \code{f} in this example has type \code{(A, B) $\Rightarrow$ C}, which is equivalent to the type of \code{g}: \code{A $\Rightarrow$ B $\Rightarrow$ C}. Notice that the latter is a function with a single argument of type \code{A} and returns another function with a single argument of type \code{B} and a return type \code{C}.
+
+We will use now use continuation passing style and currying in the continuation of our derivation. So far we have an interface which similar to the one presented in Janert's book.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+trait Component[I, O] {
+  // mutable state in here
+  def update(i: I): O
+}
+\end{lstlisting}
+
+First of all, we can apply continuation passing style and take the output type \code{O} as the input of a function which will be a second input parameter of the new \code{update} method.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+trait Component[I, O] {
+  // mutable state in here
+  def update(i: I, f: O $\Rightarrow$ Unit): Unit
+}
+\end{lstlisting}
+
+With this new interface we could potentially chain one \comp to another, by calling the \code{update} method of the second \comp in the second input parameter of the first. This however would ugly pretty fast, as lots of components would mean lots of nested functions, which are not very pleasant for the eye. What we will do instead is continue by observing that \code{update} has two parameters, which means that we can apply currying and decompose the parameter list.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+trait Component[I, O] {
+  // mutable state in here
+  def update(i: I)(f: O $\Rightarrow$ Unit): Unit
+}
+\end{lstlisting}
+
+Now that we have a function \code{update} with type \code{I $\Rightarrow$ (O $\Rightarrow$ Unit) $\Rightarrow$ Unit}, we can use the right associativity law on functions and conclude that \code{update} can also be read as a function which has input type \code{I} and output \code{(O $\Rightarrow$ Unit) $\Rightarrow$ Unit}. Although this return type doesn't seem so useful at first sight, we must remember that this is almost identical to the actual type definition of \obs (see \cref{eq:obs}). The major difference is in the input type of the inner function, which is not \code{Try[Option[O]]} but just \code{O} instead. However, it seems perfectly reasonable that the computation inside a \comp may fail or terminate all computation inside that \comp. Following this reasoning, we can now write our interface as follows:
+
+\begin{lstlisting}[style=InlineScalaStyle]
+trait Component[I, O] {
+  // mutable state in here
+  def update(i: I): Observable[Unit]
+}
+\end{lstlisting}
+
+Although one could stop here and develop operations for composing and executing instances of this interface, we will continue with some more transformations in order to further optimize the upcoming API around this interface. We must observe first of all that there is still mutable state involved in this interface, which we have concluded before we want to minimize as much as possible. Secondly, when sequentially composing two instances of this interface together, we have a way for the \code{OnNext}s of the first instance to go into the second, but we have no possibility to propagate an \code{OnError} or \code{OnCompleted} event from the first instance to the second.
+
+In order to achieve these goals, we next apply the inverse of a coproduct, called a \code{product} in categorical terms, to split the \code{update} method into two methods \code{in} and \code{out}, which accept the input parameter \code{I} and return the \code{Observable[O]} respectively.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+trait Component[I, O] {
+  // mutable state in here
+  def in(i: I): Unit
+  def out: Observable[O]
+}
+\end{lstlisting}
+
+Notice that when concatenating multiple instances of \comp, we only call \code{out} once while setting up the chain, whereas \code{in} gets called every time the previous component emits an element. As discussed before, these emissions only involve the \code{OnNext} events, since the \code{OnError} and \code{OnCompleted} events have nowhere to go. Now that we have split \code{update} into two separate methods, we can easily add extra methods for these missing events. Rather than doing that directly, however, we can equally well use the official way to add these methods, which is by inheriting \comp from \obv, which already contains these three methods all together.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+trait Component[I, O] extends Observer[I] {
+  // mutable state in here
+  def out: Observable[O]
+}
+\end{lstlisting}
+
+To get this to work, there is a little bit of plumbing to be done. First of all, we need to get the values received in the \obv into the output \obs and meanwhile transform instances of type \code{I} into instances of type \code{O}. As we do not intent the implementer of the \comp interface to override the input or output functions, we have to introduce a new function into the interface in which the actual functionality of the component can be declared: \code{transform(is: Observable[I]): Observable[O]}. We also introduce a \subj which receives the input events from the \obv methods. As discussed in \cref{subsec:subjects}, a \subj is both an \obv and an \obs, which means that we can implement the output function as applying the new \code{transform} function to this \subj.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+trait Component[I, O] extends Observer[I] {
+  val subject $=$ Subject[I]()
+  override val _subscription $=$ subject._subscription
+  
+  def transform(is: Observable[I]): Observable[O]
+  def asObservable: Observable[O] $=$ transform(subject)
+  
+  override def onNext(value: I): Unit $=$ subject.onNext(value)
+  override def onError(e: Throwable): Unit $=$ subject.onError(e)
+  override def onCompleted(): Unit $=$ subject.onCompleted()
+}
+\end{lstlisting}
+
+Having set up the \comp interface in this way, comes with an extra benefit. By using the \code{transform} method that converts one \obs into another, we can leverage the operators defined on \obs to bring the mutable state of the \comp into the sequence of operators. We will demonstrate the implementation of a \comp and the usage of mutable state by following up on the earlier example of the running average.
+
+\begin{lstlisting}[style=ScalaStyle]
+class RunningAverage(n: Int) extends Component[Double, Double] {
+
+  def transform(input: Observable[Double]): Observable[Double] $=$ {
+    input.scanLeft(new Queue[Double]) { case (queue, value) $\Rightarrow$ 
+        if (queue.length $==$ n)
+          queue.dequeue()
+        queue $+=$ value
+      }
+      .drop(1)
+      .map(queue $\Rightarrow$ queue.sum / queue.size)
+  }
+}
+\end{lstlisting}
+
+Implementing a component is just as simple as creating a class that extends \comp and implementing the \code{transform} function. In the case of \code{RunningAverage} the input stream contains numbers of which the average needs to be calculated for the last \code{n} received elements. The mutable state of the queue is wrapped in the \code{scanLeft} operator\footnote{RxJava/RxScala calls this method \code{scan}, whereas other implementations such as Rx.NET and RxMobile call it \code{scanLeft}}, in which the queue gets updated. Since the \code{scanLeft} emits the initial empty queue as its first element, we drop this element before proceeding. Finally we transform the queue into the running average inside the \code{map} operation.
+
+Based on this interface we think we can present a good foundation for the interface of this feedback API. The concerns we had with the API by Janert are fixed in this interface. Mutable state is no longer required as the \obs provides operators to deal with them. Concurrency issues are dealt with by the \obs as well, as discussed in earlier chapters. Finally, the \comp does not run on an externally defined clock but is triggered when it receives an event.
+
+
+
+
+
+
+
 
 
 
