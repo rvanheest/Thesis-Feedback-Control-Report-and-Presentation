@@ -194,7 +194,7 @@ trait Component[I, O] extends Observer[I] {
 
 To get this to work, there is a little bit of plumbing to be done. First of all, we need to get the values received in the \obv into the output \obs and meanwhile transform instances of type \code{I} into instances of type \code{O}. As we do not intent the implementer of the \comp interface to override the input or output functions, we have to introduce a new function into the interface in which the actual functionality of the component can be declared: \code{transform(is: Observable[I]): Observable[O]}. We also introduce a \subj which receives the input events from the \obv methods. As discussed in \cref{subsec:subjects}, a \subj is both an \obv and an \obs, which means that we can implement the output function as applying the new \code{transform} function to this \subj.
 
-\begin{lstlisting}[style=InlineScalaStyle]
+\begin{lstlisting}[style=ScalaStyle, caption={\comp interface}, label={lst:component-v1}]
 trait Component[I, O] extends Observer[I] {
   val subject $=$ Subject[I]()
   override val _subscription $=$ subject._subscription
@@ -210,7 +210,7 @@ trait Component[I, O] extends Observer[I] {
 
 Having set up the \comp interface in this way, comes with an extra benefit. By using the \code{transform} method that converts one \obs into another, we can leverage the operators defined on \obs to bring the mutable state of the \comp into the sequence of operators. We will demonstrate the implementation of a \comp and the usage of mutable state by following up on the earlier example of the running average.
 
-\begin{lstlisting}[style=ScalaStyle]
+\begin{lstlisting}[style=ScalaStyle, caption={Implementation of \code{RunningAverage} using the \comp interface}, label={lst:running-average-final}]
 class RunningAverage(n: Int) extends Component[Double, Double] {
 
   def transform(input: Observable[Double]): Observable[Double] $=$ {
@@ -228,3 +228,93 @@ class RunningAverage(n: Int) extends Component[Double, Double] {
 Implementing a component is just as simple as creating a class that extends \comp and implementing the \code{transform} function. In the case of \code{RunningAverage} the input stream contains numbers of which the average needs to be calculated for the last \code{n} received elements. The mutable state of the queue is wrapped in the \code{scanLeft} operator\footnote{RxJava/RxScala calls this method \code{scan}, whereas other implementations such as Rx.NET and RxMobile call it \code{scanLeft}}, in which the queue gets updated. Since the \code{scanLeft} emits the initial empty queue as its first element, we drop this element before proceeding. Finally we transform the queue into the running average inside the \code{map} operation.
 
 Based on this interface we think we can present a good foundation for the interface of this feedback API. The concerns we had with the API by Janert are fixed in this interface. Mutable state is no longer required as the \obs provides operators to deal with them. Concurrency issues are dealt with by the \obs as well, as discussed in earlier chapters. Finally, the \comp does not run on an externally defined clock but is triggered when it receives an event.
+
+\subsection{Operators}
+As mentioned before we have to define operators on the \comp interface in order to construct larger, more complex components from smaller components and to finally reach the state in which we can create a feedback loop using this interface. In this section we will explore the operator space, see which operators are useful to be part of this API and describe the way they are implemented.
+
+\subsubsection{Creating the component}
+It cannot go without notice that creating an instance of \comp is quit heavy lifting (see \cref{lst:running-average-final}). We have to extend from the appropriate interface, come up with a suitable name, specify the input and output types and implement the \code{transform} function. Although this may seem obvious and IDEs like IntelliJ or Eclipse can automatically do most of this itself, it still is a significant amount of boilerplate code. The real essence of this interface is the \code{transform} function, which both takes and returns an \obs. The rest of the interface can be abstracted away into a static function which creates an anonymous instance of \comp given the \code{transform} function.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+object Component {
+  def apply[I, O](factory: Observable[I] $\Rightarrow$ Observable[O]) $=$ {
+    new Component[I, O] {
+      def transform(input: Observable[I]) $=$ factory(input)
+    }
+  }
+}
+\end{lstlisting}
+
+The advantage of having this function and calling it \code{apply} is that it can be omitted in its usage. A simple component like a running sum (or integral) can we written as simple as \code{Component[Double, Double](\char`_.scanLeft(0.0)(\char`_ \ + \char`_))}
+
+In practice, while using this interface, it turned out that not always an argument of type \code{Observable[I] $\Rightarrow$ Observable[O]} is needed. In many situations a much simpler function would satisfy our needs. Instead it takes a function of type \code{I $\Rightarrow$ O} as argument. This function is then used inside the \code{apply} function.
+
+On the same note we can have an \code{identity} component which immediately return its input without performing any transformation.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+object Component {
+  $\ldots$
+
+  def create[I, O](func: I $\Rightarrow$ O) $=$ Component[I, O](_.map(func))
+  
+  def identity[T] $=$ Component[T, T](Predef.identity)
+}
+\end{lstlisting}
+
+\subsubsection{Chaining two components}
+One of the most important operators would be to compose two components into a single component. The output of the first component is fed to the second component as its input. The input and output of the composed component are the input and output of the first and second component respectively. As the output of the first component is equal to the input of the second component, it must follow that these have the same type. For a first component \code{c1: Component[I, O]} we must have a second component \code{c2: Component[O, Y]} such that the composed component \code{c1.concat(c2)} has type \code{Component[I, Y]}.
+
+\todo{image of linear composition}
+
+It should be clear by now that given a value of type \code{I}, component \code{c1} should transform this into a value\footnote{notice that the transformation in \code{c1} can also cause the output to return multiple values or no values at all.} of type \code{O}. This value is then used as the input of component \code{c2}, which in turn transforms it into a value of type \code{Y}. This value is then emitted as the output of the composed component. Besides these \code{OnNext} events, the \obs in either component can return an \code{OnError} or \code{OnCompleted} event. In this case the component not only has to propagate these events to the next component, but also needs to signal upstream that it is terminating. This means that the \subj which is inside the \comp can unsubscribe itself from every observer, and do this for all upstream components as well.
+
+The behavior for regular \code{OnNext} events can be achieved by connecting the various streams in \todo{refer to image above} by subscribing them to each other. Notice that we have to connect the components in reversed order; that is, first subscribe the output of \code{c2} to the output of the composed component, then subscribe the output of \code{c1} to the input of \code{c2} and finally subscribe the input of the composed component to the input of \code{c1}. The reason for this is that either \code{c1} or \code{c2} might have elements that emit immediately when the stream is subscribed. Due to the workings of a \subj, these events would get lost if the \comp did not yet subscribe its output to something else.
+
+The behavior of the terminal events can be achieved by using the functionality of Rx to compose subscriptions. In RxMobile every \obv is a \subs as well, so we just need to \textit{add} the subscriptions to each other. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
