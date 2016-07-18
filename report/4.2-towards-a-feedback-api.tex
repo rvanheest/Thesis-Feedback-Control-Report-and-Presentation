@@ -266,12 +266,55 @@ One of the most important operators would be to compose two components into a si
 
 \todo{image of linear composition}
 
-It should be clear by now that given a value of type \code{I}, component \code{c1} should transform this into a value\footnote{notice that the transformation in \code{c1} can also cause the output to return multiple values or no values at all.} of type \code{O}. This value is then used as the input of component \code{c2}, which in turn transforms it into a value of type \code{Y}. This value is then emitted as the output of the composed component. Besides these \code{OnNext} events, the \obs in either component can return an \code{OnError} or \code{OnCompleted} event. In this case the component not only has to propagate these events to the next component, but also needs to signal upstream that it is terminating. This means that the \subj which is inside the \comp can unsubscribe itself from every observer, and do this for all upstream components as well.
+It should be clear by now that given a value of type \code{I}, component \code{c1} should transform this into a value\footnote{Notice that the transformation in \code{c1} can also cause the output to return multiple values over time or no values at all.} of type \code{O}. This value is then used as the input of component \code{c2}, which in turn transforms it into a value of type \code{Y}. This value is then emitted as the output of the composed component. Besides these \code{OnNext} events, the \obs in either component can return an \code{OnError} or \code{OnCompleted} event. In this case the component not only has to propagate these events to the next component, but also needs to signal upstream that it is terminating. This means that the \subj which is inside the \comp can unsubscribe itself from every observer, and do this for all upstream components as well.
 
-The behavior for regular \code{OnNext} events can be achieved by connecting the various streams in \todo{refer to image above} by subscribing them to each other. Notice that we have to connect the components in reversed order; that is, first subscribe the output of \code{c2} to the output of the composed component, then subscribe the output of \code{c1} to the input of \code{c2} and finally subscribe the input of the composed component to the input of \code{c1}. The reason for this is that either \code{c1} or \code{c2} might have elements that emit immediately when the stream is subscribed. Due to the workings of a \subj, these events would get lost if the \comp did not yet subscribe its output to something else.
+The behavior for regular \code{OnNext} events can be achieved by connecting the various streams in \todo{refer to image above} by subscribing them to each other. Notice that we have to connect the components in reversed order; that is, first subscribe the output of \code{c2} to the output of the composed component, then subscribe the output of \code{c1} to the input of \code{c2} and finally subscribe the input of the composed component to the input of \code{c1}. The reason for this is that either \code{c1} or \code{c2} might have elements that emit immediately when the stream is subscribed. Due to the nature of a \subj, these events would get lost if the \comp did not yet subscribe its output to something else.
 
-The behavior of the terminal events can be achieved by using the functionality of Rx to compose subscriptions. In RxMobile every \obv is a \subs as well, so we just need to \textit{add} the subscriptions to each other. 
+The behavior of the terminal events can be achieved by using the functionality of Rx to compose subscriptions. In RxMobile every \obv is a \subs as well and likewise every \comp is an \obv, so we just need to \textit{add} the subscriptions to each other. To do so, we also require the subscription that represents the output of the \comp to be created. We get this by creating a new \obs and using the \obv in the lambda expression for this.
 
+\begin{lstlisting}[style=InlineScalaStyle]
+implicit class ArrowOperators[I, O](val src: Component[I, O]) {
+  def concat[Y](other: Component[O, Y]): Component[I, Y] $=$ {
+    val result $=$ Component[I, Y](input $\Rightarrow$ Observable.create(output $\Rightarrow$ {
+      other.asObservable.subscribe(output)
+      src.asObservable.subscribe(other)
+      input.subscribe(src)
+
+      output $+=$ other
+      other $+=$ src
+    }))
+    src $+=$ result
+    result
+  }
+}
+\end{lstlisting}
+
+As we will use this feature of combining the \subs with the \comp to be created, we will already abstract over this and use this in upcoming operators as well.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+def lift[X, Y](f: (Observable[X], Observer[Y])$\Rightarrow$Unit): Component[X, Y] $=$ {
+  val result $=$ Component[X, Y](input $\Rightarrow$ Observable.create(f(input, _)))
+  src $+=$ result
+  result
+}
+\end{lstlisting}
+
+We can then use \code{lift} in \code{concat} as follows:
+
+\begin{lstlisting}[style=InlineScalaStyle]
+implicit class ArrowOperators[I, O](val src: Component[I, O]) {
+  def concat[Y](other: Component[O, Y]): Component[I, Y] $=$ {
+    src.lift((input, downstream) $\Rightarrow$ {
+      other.asObservable.subscribe(output)
+      src.asObservable.subscribe(other)
+      input.subscribe(src)
+
+      output $+=$ other
+      other $+=$ src
+    })
+  }
+}
+\end{lstlisting}
 
 
 
