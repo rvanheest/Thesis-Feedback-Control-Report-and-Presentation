@@ -425,7 +425,47 @@ Although our implementation of these parallel composition operators in the conte
 
 Besides that, given that \code{zip} is used in the \code{first} operator, it follows that it is also used in \code{second} and that it is technically used twice in \code{(***)}, \code{(\&\&\&)} and \code{combine}. This is not only twice as risky, but is also fairly inefficient as the underlying Rx code needs to maintain two queues now. We will show that this can be done more efficiently by reducing the uses of \code{zip} to only once per \code{combine} operation.
 
+For this we have to observe that we can not only implement \code{(***)} in terms of \code{first} and \code{second} but that it is also possible to implement both \code{first} and \code{second} in terms of \code{(***)}! After all, \code{first} is completely equal to \code{(***)} with the second input arrow being the identity. We can easily see this by comparing \todo{refer to image of \code{first}} to \todo{refer to image of \code{(***)}} where \code{c2} is equal to \code{Component.identity}. The same is true for \code{second} by making \code{c1} in \todo{refer to image of \code{(***)}} the identity \comp.
 
+The \code{(***)} operator can then be implemented in terms of \code{lift} by splitting the input stream and subscribing both parts to the first and second component respectively. Then the outputs of these components are zipped together into a tuple and subscribed to the output of the resulting \comp. After that we are only left with some administrative work in terms of the subscriptions.
+
+The other operators, \code{(\&\&\&)} and \code{combine} do not require any modifications as they were already implemented in terms of \code{(***)}. The full implementation of the parallel composition operators in our API now looks as follows:
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=InlineScalaStyle]
+implicit class Operators[I, O](val src: Component[I, O]) {
+  $\ldots$
+  
+  def first[Y]: Component[(I, Y), (O, Y)] $=$ {
+    src *** Component.identity[Y]
+  }
+
+  def second[Y]: Component[(Y, I), (Y, O)] $=$ {
+    Component.identity[Y] *** src
+  }
+
+  def ***[X, Y](other: Component[X, Y]): Component[(I, X), (O, Y)] $=$ {
+    src.lift((input, downstream) $\Rightarrow$ {
+      input.map(_._1).subscribe(src)
+      input.map(_._2).subscribe(other)
+
+      src.asObservable.zipWithBuffer(other.asObservable)((_, _)).subscribe(downstream)
+
+      downstream $+=$ src
+      downstream $+=$ other
+    })
+  }
+
+  def &&&[Y](other: Component[I, Y]): Component[I, (O, Y)] $=$ {
+    Component.create[I, (I, I)](b $\Rightarrow$ (b, b)) >>> (src *** other)
+  }
+
+  def combine[X, Y](other: Component[I, X])(combiner: (O, X) $\Rightarrow$ Y): Component[I, Y] $=$ {
+    (src &&& other) >>> Component.create(combiner.tupled)
+  }
+}
+\end{lstlisting}
+\end{minipage}
 
 
 
