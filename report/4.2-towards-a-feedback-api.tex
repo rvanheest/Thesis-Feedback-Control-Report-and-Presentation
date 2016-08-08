@@ -420,6 +420,13 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 }
 \end{lstlisting}
 
+\subsubsection{Problems with parallel composition on \comp}
+Although our implementation of these parallel composition operators in the context of \comp might seem fine at first glance, the observant reader might have spotted some flaws in it. The main concern here is the choice of using \code{zip} in the \code{first} operator. As discussed in section \cref{sec:fastproc-slowcons}, \code{zip} is particularly risky to use given the unpredictable nature of its source streams. This same danger comes up in our implementation of \code{first}, as the inner component might produce more than one element for every received element or as it might start with a certain number of elements before producing elements based on what it receives\footnote{This can be achieved using \code{startWith}, which is a well-known operator for \obs and which we will introduce later in the context of \comp.}.
+
+Besides that, given that \code{zip} is used in the \code{first} operator, it follows that it is also used in \code{second} and that it is technically used twice in \code{(***)}, \code{(\&\&\&)} and \code{combine}. This is not only twice as risky, but is also fairly inefficient as the underlying Rx code needs to maintain two queues now. We will show that this can be done more efficiently by reducing the uses of \code{zip} to only once per \code{combine} operation.
+
+
+
 
 
 
