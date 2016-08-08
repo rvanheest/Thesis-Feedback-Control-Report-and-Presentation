@@ -319,8 +319,16 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 
 In general \code{lift} can be viewed as the creation of a new, encapsulating \comp, whose behavior is defined in the function \code{f}. The function arguments of types \obs and \obv represent the input and output of this new \comp respectively. This may seem counterintuitive at first, as a \comp has an input of type \obv and an output of type \obs. However, these types are what we see while looking at a \comp from the outside, whereas within the \code{lift} operator, we are looking at it from the inside. In that case the input has type \obs, since we want to receive new events and the output has type \obv, as we want to send new events.
 
-\subsubsection{On arrows}
-Before we continue developing new operators, we have to observe that both \code{concat} and \code{apply}/\code{create} satisfy the \code{Arrow} typeclass that
+\subsubsection{Formalizing the operators}
+Before we continue developing new operators, we have to observe that both \code{concat} and \code{apply}/\code{create} satisfy the \code{Arrow} typeclass that was described first in 1998 in a paper by John Hughes \todo{cite}. The \code{Arrow}  typeclass has similar operators to the \code{Monad} typeclass, but is defined more generally. Computations that are clearly not a monad can be composed over in the same way as computations that are a monad using this new typeclass. Just as a monadic type \code{M[A]} is representing a computation that delivers an \code{A}, so an arrow type \code{A[B, C]} is representing a computation with input \code{B} and output \code{C}. With that the dependence on the input of the computation is made explicit.
+
+The \code{Arrow} typeclass defines a couple of functions which are listed in \cref{lst:arrow-typeclass} in Haskell. First of all, it defines \code{arr} to be a function that accepts a function from \code{b} to \code{c} as its input and the arrow from \code{b} to \code{c} as its output. This function is completely analogous to the \code{apply} method described earlier, where \code{b} and \code{c} are both of type \obs. Besides that, \code{Arrow} defines the \code{>>>} operator, which composes two arrows together into one single arrow. Here the output of the first arrow is used as an input for the second arrow. This is of course analogue to the \code{concat} operator we just implemented.
+
+\begin{lstlisting}[style=HaskellStyle, caption={\code{Arrow} typeclass}, label={lst:arrow-typeclass}]
+class Arrow a where
+    arr :: (b $\rightarrow$ c) $\rightarrow$ a b c
+    (>>>) :: a b c $\rightarrow$ a c d $\rightarrow$ a b d
+\end{lstlisting}
 
 \subsubsection{Parallel composition}
 
