@@ -331,6 +331,94 @@ class Arrow a where
 \end{lstlisting}
 
 \subsubsection{Parallel composition}
+The careful reader may either have noticed that the definition of an arrow as provided in \cref{lst:arrow-typeclass} is not complete or wonder how to implement an \code{add} function in arrow style. As Hughes shows, this is simple in a monadic context, but the current functions in the \code{Arrow} typeclass do not satisfy the need.
+
+\begin{lstlisting}[style=InlineHaskellStyle]
+add :: Arrow a $\Rightarrow$ (a b Int) $\rightarrow$ (a b Int) $\rightarrow$ (a b Int)
+add x y = $\ldots$
+\end{lstlisting}
+
+The input type \code{b} of the resulting arrow of this function needs to supply its value to both inputs of this functions arguments and combine its outputs. This is however not possible with the current \code{>>>} operator we have defined. Hence we require some new operators to be added to the \code{Arrow} typeclass. Hughes defines these operators in terms of each other, leaving only one operator open that requires a custom implementation.
+
+\begin{lstlisting}[style=HaskellStyle, caption={\code{Arrow} typeclass}, label={lst:arrow-typeclass-full}]
+class Arrow a where
+    $\ldots$
+    
+    first :: a b c $\rightarrow$ a (b,d) (c,d)
+    
+    second :: a b c $\rightarrow$ (d,b) (d,c)
+    second f = arr swap >>> first f >>> swap
+      where swap (x,y) = (y,x)
+      
+    (***) :: a b c $\rightarrow$ a d e $\rightarrow$ a (b,d) (c,e)
+    f *** g = first f >>> second g
+    
+    (&&&) :: a b c $\rightarrow$ a b d $\rightarrow$ a b (c,d)
+    f &&& g = arr ($\lambda$b $\rightarrow$ (b,b)) >>> (f *** g)
+\end{lstlisting}
+
+The operator \code{first} takes an arrow from \code{b} to \code{c} as its argument and just adds an extra input and output to the resulting arrow. \code{second} does the same, but effectively in reverse, by putting the extra input and output in the first slot. Note how it is possible to implement \code{second} in terms of \code{first} by doing extra swaps of the arguments.
+
+\todo{image for \code{first} and \code{second} here or refer to another image which also shows \code{***} and \code{\&\&\&}}
+
+Implementing these two operators for \comp requires us to split the `\textit{input tuple stream}', apply the given \comp to the first part of this stream and merge it back with the second part of the stream. However, remember that for \obs there are a number of distinct operators for merging streams, each having their own behavior: \code{flatMap}, \code{combineLatest}, \code{withLatestFrom}, \code{zip}, \code{merge}, \code{concat}, etcetera. Since we want to merge the \comp's output stream and the second part of the input stream one-by-one, the \code{zip} operator is required here. The rest of the implementation details are just straightforward, using the earlier defined \code{lift} and taking care of the required subscriptions.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+implicit class Operators[I, O](val src: Component[I, O]) {
+  $\ldots$
+  
+  def first[Y]: Component[(I, Y), (O, Y)] $=$ {
+    src.lift((input, downstream) $\Rightarrow$ {
+      val srcOut $=$ src.asObservable
+      val inputOut $=$ input.map(_._2)
+
+      input.map(_._1).subscribe(src)
+      srcOut.zipWithBuffer(inputOut)((_, _)).subscribe(downstream)
+
+      downstream $+=$ src
+    })
+  }
+
+  def second[Y]: Component[(Y, I), (Y, O)] $=$ {
+    Component.create[(Y, I), (I, Y)](_.swap) >>> src.first >>> Component.create(_.swap)
+  }
+}
+\end{lstlisting}
+
+The other two operators that Hughes defines for the \code{Arrow} typeclass are \code{(***)} and \code{(\&\&\&)}. The former operator is used in ``\textit{parallel composition}'' of arrows, taking its input consisting of two arrows and merging them into one arrow of tuples. This is done by applying \code{first} to the first input argument and \code{second} to the second. The latter operator, \code{(\&\&\&)}, takes this behavior one step further by specifying that the input type of both input arrows must be the same. With this we can construct a resulting arrow that has an input type \code{b}, whose values are supplied to both arrows, and an output type which is the tuple (or product) of both arrow's results. This type of composition is sometimes referred to as ``\textit{fanout composition}''. Implementations of these operators in the context of \comp are equivalent to the ones in \cref{lst:arrow-typeclass-full}:
+
+\begin{lstlisting}[style=InlineScalaStyle]
+implicit class Operators[I, O](val src: Component[I, O]) {
+  $\ldots$
+
+  def ***[X, Y](other: Component[X, Y]): Component[(I, X), (O, Y)] $=$ {
+    src.first[X] >>> other.second[O]
+  }
+
+  def &&&[Y](other: Component[I, Y]): Component[I, (O, Y)] $=$ {
+    Component.create[I, (I, I)](b $\Rightarrow$ (b, b)) >>> (src *** other)
+  }
+}
+\end{lstlisting}
+
+Using these new operators, we are now able to define the \code{add} function in arrow style as described above. We compose the two arrows using a fanout and bring the two results together by using another component that adds the two values together. Notice that this function would be particularly interesting when implementing a PID controller or any other parallel composed set of components.
+
+\begin{lstlisting}[style=InlineHaskellStyle]
+add :: Arrow a $\Rightarrow$ (a b Int) $\rightarrow$ (a b Int) $\rightarrow$ (a b Int)
+add x y = (x &&& y) >>> arr ($\lambda$(b,c) $\rightarrow$ b + c)
+\end{lstlisting}
+
+Hughes finishes this trail by generalizing the \code{add} to a \code{liftA2}, which is equivalent in functionality to Haskell's \code{liftM2} which combines the results of two monadic computations. Besides two input arrows, \code{liftA2} accepts a combinator function that is applied after the fanout composition of the two arrows. We define a similar operator called \code{combine} in our API for the purpose of parallel composition:
+
+\begin{lstlisting}[style=InlineScalaStyle]
+implicit class Operators[I, O](val src: Component[I, O]) {
+  $\ldots$
+
+  def combine[X, Y](other: Component[I, X])(combiner: (O, X) $\Rightarrow$ Y): Component[I, Y] $=$ {
+    (src &&& other) >>> Component.create(combiner.tupled)
+  }
+}
+\end{lstlisting}
 
 
 
