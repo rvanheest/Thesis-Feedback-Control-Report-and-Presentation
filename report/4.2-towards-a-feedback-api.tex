@@ -233,31 +233,29 @@ Based on this interface we think we can present a good foundation for the interf
 As mentioned before we have to define operators on the \comp interface in order to construct larger, more complex components from smaller components and to finally reach the state in which we can create a feedback loop using this interface. In this section we will explore the operator space, see which operators are useful to be part of this API and describe the way they are implemented.
 
 \subsubsection{Creating the component}
-It cannot go without notice that creating an instance of \comp is quit heavy lifting (see \cref{lst:running-average-final}). We have to extend from the appropriate interface, come up with a suitable name, specify the input and output types and implement the \code{transform} function. Although this may seem obvious and IDEs like IntelliJ or Eclipse can automatically do most of this itself, it still is a significant amount of boilerplate code. The real essence of this interface is the \code{transform} function, which both takes and returns an \obs. The rest of the interface can be abstracted away into a static function which creates an anonymous instance of \comp given the \code{transform} function.
+It cannot go without notice that creating an instance of \comp is quit heavy lifting (see \cref{lst:running-average-final}). We have to extend from the appropriate interface, come up with a suitable name, specify the input and output types and implement the \code{transform} function. Although this may seem obvious and IDEs like IntelliJ or Eclipse can automatically do most of this itself, it still is a significant amount of boilerplate code. The real essence of this interface is the \code{transform} function, which both takes and returns an \obs. The rest of the interface can be abstracted away into a static function which creates an anonymous instance of \comp given the \code{transform} function (\cref{lst:creating-component}).
 
-\begin{lstlisting}[style=InlineScalaStyle]
+The advantage of having this function and calling it \code{apply} is that it can be omitted in its usage. A simple component like a running sum (or integral) can we written as simple as \code{Component[Double, Double](\char`_.scanLeft(0.0)(\char`_ \ + \char`_))}
+
+In practice, while using this interface, it turned out that not always an argument of type \code{Observable[I] $\Rightarrow$ Observable[O]} is needed. In many situations a much simpler function would satisfy our needs. Instead it takes a function of type \code{I $\Rightarrow$ O} as argument. This function, called \code{create}, is then used inside the \code{apply} function.
+
+On the same note we can have an \code{identity} component which immediately return its input without performing any transformation.
+
+Finally, we add a function \code{from}, which ignores the input stream and only emits the items from its argument stream.
+
+\begin{lstlisting}[style=ScalaStyle, caption={Various ways to create a \comp}, label={lst:creating-component}]
 object Component {
   def apply[I, O](factory: Observable[I] $\Rightarrow$ Observable[O]) $=$ {
     new Component[I, O] {
       def transform(input: Observable[I]) $=$ factory(input)
     }
   }
-}
-\end{lstlisting}
-
-The advantage of having this function and calling it \code{apply} is that it can be omitted in its usage. A simple component like a running sum (or integral) can we written as simple as \code{Component[Double, Double](\char`_.scanLeft(0.0)(\char`_ \ + \char`_))}
-
-In practice, while using this interface, it turned out that not always an argument of type \code{Observable[I] $\Rightarrow$ Observable[O]} is needed. In many situations a much simpler function would satisfy our needs. Instead it takes a function of type \code{I $\Rightarrow$ O} as argument. This function is then used inside the \code{apply} function.
-
-On the same note we can have an \code{identity} component which immediately return its input without performing any transformation.
-
-\begin{lstlisting}[style=InlineScalaStyle]
-object Component {
-  $\ldots$
 
   def create[I, O](func: I $\Rightarrow$ O) $=$ Component[I, O](_.map(func))
   
   def identity[T] $=$ Component[T, T](Predef.identity)
+  
+  def from[Ignore, O](obs: Observable[O]) $=$ Component[Ignore, O](_ $\Rightarrow$ obs)
 }
 \end{lstlisting}
 
@@ -320,30 +318,30 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 In general \code{lift} can be viewed as the creation of a new, encapsulating \comp, whose behavior is defined in the function \code{f}. The function arguments of types \obs and \obv represent the input and output of this new \comp respectively. This may seem counterintuitive at first, as a \comp has an input of type \obv and an output of type \obs. However, these types are what we see while looking at a \comp from the outside, whereas within the \code{lift} operator, we are looking at it from the inside. In that case the input has type \obs, since we want to receive new events and the output has type \obv, as we want to send new events.
 
 \subsubsection{Formalizing the operators}
-Before we continue developing new operators, we have to observe that both \code{concat} and \code{apply}/\code{create} satisfy the \code{Arrow} typeclass that was described first in 1998 in a paper by John Hughes \todo{cite}. The \code{Arrow}  typeclass has similar operators to the \code{Monad} typeclass, but is defined more generally. Computations that are clearly not a monad can be composed over in the same way as computations that are a monad using this new typeclass. Just as a monadic type \code{M[A]} is representing a computation that delivers an \code{A}, so an arrow type \code{A[B, C]} is representing a computation with input \code{B} and output \code{C}. With that the dependence on the input of the computation is made explicit.
+Before we continue developing new operators, we have to observe that both \code{concat} and \code{apply}/\code{create} satisfy the \textit{Arrow} type class that was described first in 1998 in a paper by John Hughes \todo{cite}. The \textit{Arrow}  type class has similar operators to the \code{Monad} type class, but is defined more generally. Computations that are clearly not a monad can be composed over in the same way as computations that are a monad using this new type class. Just as a monadic type \code{M[A]} is representing a computation that delivers an \code{A}, so an arrow type \code{A[B, C]} is representing a computation with input \code{B} and output \code{C}. With that the dependence on the input of the computation is made explicit.
 
-The \code{Arrow} typeclass defines a couple of functions which are listed in \cref{lst:arrow-typeclass} in Haskell. First of all, it defines \code{arr} to be a function that accepts a function from \code{b} to \code{c} as its input and the arrow from \code{b} to \code{c} as its output. This function is completely analogous to the \code{apply} method described earlier, where \code{b} and \code{c} are both of type \obs. Besides that, \code{Arrow} defines the \code{>>>} operator, which composes two arrows together into one single arrow. Here the output of the first arrow is used as an input for the second arrow. This is of course analogue to the \code{concat} operator we just implemented.
+The \textit{Arrow} type class defines a couple of functions which are listed in \cref{lst:arrow-typeclass} in Haskell. First of all, it defines \code{arr} to be a function that accepts a function from \code{b} to \code{c} as its input and the arrow from \code{b} to \code{c} as its output. This function is completely analogous to the \code{apply} method described earlier, where \code{b} and \code{c} are both of type \obs. Besides that, \textit{Arrow} defines the \code{(>>>)} operator, which composes two arrows together into one single arrow. Here the output of the first arrow is used as an input for the second arrow. This is of course analogue to the \code{concat} operator we just implemented. We define \code{(>>>)} as a second way of writing a linear composition.
 
-\begin{lstlisting}[style=HaskellStyle, caption={\code{Arrow} typeclass}, label={lst:arrow-typeclass}]
+\begin{lstlisting}[style=HaskellStyle, caption={\textit{Arrow} type class}, label={lst:arrow-typeclass}]
 class Arrow a where
     arr :: (b $\rightarrow$ c) $\rightarrow$ a b c
     (>>>) :: a b c $\rightarrow$ a c d $\rightarrow$ a b d
 \end{lstlisting}
 
 \subsubsection{Parallel composition}
-The careful reader may either have noticed that the definition of an arrow as provided in \cref{lst:arrow-typeclass} is not complete or wonder how to implement an \code{add} function in arrow style. As Hughes shows, this is simple in a monadic context, but the current functions in the \code{Arrow} typeclass do not satisfy the need.
+The careful reader may either have noticed that the definition of an arrow as provided in \cref{lst:arrow-typeclass} is not complete or wonder how to implement an \code{add} function in arrow style. As Hughes shows, this is simple in a monadic context, but the current functions in the \textit{Arrow} type class do not satisfy the need.
 
 \begin{lstlisting}[style=InlineHaskellStyle]
 add :: Arrow a $\Rightarrow$ (a b Int) $\rightarrow$ (a b Int) $\rightarrow$ (a b Int)
 add x y = $\ldots$
 \end{lstlisting}
 
-The input type \code{b} of the resulting arrow of this function needs to supply its value to both inputs of this functions arguments and combine its outputs. This is however not possible with the current \code{>>>} operator we have defined. Hence we require some new operators to be added to the \code{Arrow} typeclass. Hughes defines these operators in terms of each other, leaving only one operator open that requires a custom implementation.
+The input type \code{b} of the resulting arrow of this function needs to supply its value to both inputs of this functions arguments and combine its outputs. This is however not possible with the current \code{(>>>)} operator we have defined. Hence we require some new operators to be added to the \textit{Arrow} type class. Hughes defines these operators in terms of each other, leaving only one operator open that requires a custom implementation.
 
-\begin{lstlisting}[style=HaskellStyle, caption={\code{Arrow} typeclass}, label={lst:arrow-typeclass-full}]
+\begin{lstlisting}[style=HaskellStyle, caption={\textit{Arrow} type class}, label={lst:arrow-typeclass-full}]
 class Arrow a where
-    $\ldots$
-    
+    arr :: (b $\rightarrow$ c) $\rightarrow$ a b c
+    (>>>) :: a b c $\rightarrow$ a c d $\rightarrow$ a b d
     first :: a b c $\rightarrow$ a (b,d) (c,d)
     
     second :: a b c $\rightarrow$ (d,b) (d,c)
@@ -359,14 +357,14 @@ class Arrow a where
 
 The operator \code{first} takes an arrow from \code{b} to \code{c} as its argument and just adds an extra input and output to the resulting arrow. \code{second} does the same, but effectively in reverse, by putting the extra input and output in the first slot. Note how it is possible to implement \code{second} in terms of \code{first} by doing extra swaps of the arguments.
 
-\todo{image for \code{first} and \code{second} here or refer to another image which also shows \code{***} and \code{\&\&\&}}
+\todo{image for \code{first} and \code{second} here or refer to another image which also shows \code{(***)} and \code{(\&\&\&)}}
 
 Implementing these two operators for \comp requires us to split the `\textit{input tuple stream}', apply the given \comp to the first part of this stream and merge it back with the second part of the stream. However, remember that for \obs there are a number of distinct operators for merging streams, each having their own behavior: \code{flatMap}, \code{combineLatest}, \code{withLatestFrom}, \code{zip}, \code{merge}, \code{concat}, etcetera. Since we want to merge the \comp's output stream and the second part of the input stream one-by-one, the \code{zip} operator is required here. The rest of the implementation details are just straightforward, using the earlier defined \code{lift} and taking care of the required subscriptions.
 
 \begin{lstlisting}[style=InlineScalaStyle]
 implicit class Operators[I, O](val src: Component[I, O]) {
   $\ldots$
-  
+
   def first[Y]: Component[(I, Y), (O, Y)] $=$ {
     src.lift((input, downstream) $\Rightarrow$ {
       val srcOut $=$ src.asObservable
@@ -385,7 +383,7 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 }
 \end{lstlisting}
 
-The other two operators that Hughes defines for the \code{Arrow} typeclass are \code{(***)} and \code{(\&\&\&)}. The former operator is used in ``\textit{parallel composition}'' of arrows, taking its input consisting of two arrows and merging them into one arrow of tuples. This is done by applying \code{first} to the first input argument and \code{second} to the second. The latter operator, \code{(\&\&\&)}, takes this behavior one step further by specifying that the input type of both input arrows must be the same. With this we can construct a resulting arrow that has an input type \code{b}, whose values are supplied to both arrows, and an output type which is the tuple (or product) of both arrow's results. This type of composition is sometimes referred to as ``\textit{fanout composition}''. Implementations of these operators in the context of \comp are equivalent to the ones in \cref{lst:arrow-typeclass-full}:
+The other two operators that Hughes defines for the \textit{Arrow} type class are \code{(***)} and \code{(\&\&\&)}. The former operator is used in ``\textit{parallel composition}'' of arrows, taking its input consisting of two arrows and merging them into one arrow of tuples. This is done by applying \code{first} to the first input argument and \code{second} to the second. The latter operator, \code{(\&\&\&)}, takes this behavior one step further by specifying that the input type of both input arrows must be the same. With this we can construct a resulting arrow that has an input type \code{b}, whose values are supplied to both arrows, and an output type which is the tuple (or product) of both arrow's results. This type of composition is sometimes referred to as ``\textit{fanout composition}''. Implementations of these operators in the context of \comp are equivalent to the ones in \cref{lst:arrow-typeclass-full}:
 
 \begin{lstlisting}[style=InlineScalaStyle]
 implicit class Operators[I, O](val src: Component[I, O]) {
@@ -432,10 +430,10 @@ The \code{(***)} operator can then be implemented in terms of \code{lift} by spl
 The other operators, \code{(\&\&\&)} and \code{combine} do not require any modifications as they were already implemented in terms of \code{(***)}. The full implementation of the parallel composition operators in our API now looks as follows:
 
 \begin{minipage}{\linewidth}
-\begin{lstlisting}[style=InlineScalaStyle]
+\begin{lstlisting}[style=ScalaStyle]
 implicit class Operators[I, O](val src: Component[I, O]) {
   $\ldots$
-  
+
   def first[Y]: Component[(I, Y), (O, Y)] $=$ {
     src *** Component.identity[Y]
   }
@@ -466,6 +464,77 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 }
 \end{lstlisting}
 \end{minipage}
+
+\subsubsection{Functor, Applicative, Monad}
+One of the reasons that Hughes introduced the arrow \todo{cite that paper} is that he saw that not all kinds of computations can be described in terms of monads. He uses the parser library by Swierstra and Duponcheel \todo{citation needed} as an example of a structure that can implement the choice combinator from the \textit{MonadPlus} type class but turns out to have no possible implementation for the \textit{Monad}'s \code{(>>=)} operator. Swierstra and Duponcheel's solution to this problem is to discard the use of a monad and instead use a different operator \code{(<*>)} that later became known as part of the \textit{Applicative} type class. Nowadays \textit{Applicative} sits right in the middle between \textit{Functor} and \textit{Monad} and \textit{MonadPlus} not only `inherits' from \textit{Monad} but also from \textit{Alternative}, which already has the choice combinator (see \cref{lst:type-classes-for-monads}).
+
+As an alternative to introducing the \code{(<*>)} operator as Swierstra and Duponcheel did, Hughes introduces the \textit{Arrow} as the answer to combining non-monadic computations. With this he shows that every \textit{Monad} is in fact an \textit{Arrow}, but that not every \textit{Arrow} is a \textit{Monad}. For this he introduces another type class \textit{ArrowApply} (\cref{lst:arrow-apply}), which he shows to be equivalent to the \textit{Monad} type class. From this it follows that for an \textit{Arrow} to be also a \textit{Monad} it must be able to implement the \textit{ArrowApply} type class.
+
+\begin{minipage}{0.6\linewidth}
+\begin{lstlisting}[style=HaskellStyle, caption={Type classes for monads}, label={lst:type-classes-for-monads}, captionpos=b, numbers=none]
+class Functor f where
+  fmap :: (a $\rightarrow$ b) $\rightarrow$ f a $\rightarrow$ f b
+
+class Functor f $\Rightarrow$ Applicative f where
+  pure :: a $\rightarrow$ f a
+  (<*>) :: f (a $\rightarrow$ b) $\rightarrow$ f a $\rightarrow$ f b
+
+class Applicative m $\Rightarrow$ Monad m where
+  return :: a $\rightarrow$ m a
+  (>>=) :: m a $\rightarrow$ (a $\rightarrow$ m b) $\rightarrow$ m b
+
+class Applicative f $\Rightarrow$ Alternative f where
+  empty :: f a
+  (<$|$>) :: f a $\rightarrow$ f a $\rightarrow$ f a
+
+class (Alternative m, Monad m) $\Rightarrow$ MonadPlus m where
+  mzero :: m a
+  mzero = empty
+  
+  mplus :: m a $\rightarrow$ m a $\rightarrow$ m a
+  mplus = (<$|$>)
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.4\linewidth}
+\todo{corresponding image here}
+\end{minipage}
+
+\begin{lstlisting}[style=HaskellStyle, caption={ArrowApply}, label={lst:arrow-apply}, captionpos=b, numbers=none]
+class Arrow a $\Rightarrow$ ArrowApply a where
+  app :: a (a b c, b) c
+\end{lstlisting}
+
+In the previous sections we have demonstrated the \comp interface to be an \textit{Arrow}, which, given the discussion above, brings us to the question whether \comp is also a \textit{Functor}, \textit{Applicative} and \textit{Monad} and hence whether we are allowed to add the associated operators to our API.
+
+The \textit{Functor} type class (\cref{lst:type-classes-for-monads}) contains a single function \code{fmap} which accepts a \textit{Functor} and a function as its input and returns a new \textit{Functor} on which the function is applied. Translated to the \comp interface, \code{map}\footnote{\code{fmap} in Haskell is usually referred to in Scala as \code{map}} applies a transformation function to the output of the given \comp. This is simple, as we can already wrap a function in a \comp using the \code{create} operator and we can concatenate two components using \code{concat} or \code{(>>>)}.
+
+The \textit{Applicative} type class (\cref{lst:type-classes-for-monads}) contains two functions, \code{pure} and \code{(<*>)}. We already have the former function in our API, namely \code{from} (\cref{lst:creating-component}). The latter function is almost the same as \code{fmap}, only with the difference that the function is wrapped inside an \textit{Applicative}. The two input parameters of \code{(<*>)} need to be merged into a single \textit{Applicative} where the function from the first parameter is applied to the value from the second parameter. We also already have this functionality in the form of the \code{combine} operator, which combines two instances of \comp using a given function.
+
+\begin{lstlisting}[style=ScalaStyle]
+implicit class Operators[I, O](val src: Component[I, O]) {
+  $\ldots$
+
+  def map[X](f: O $\Rightarrow$ X): Component[I, X] $=$ src >>> Component.create(f)
+  
+  def <*>[X, Y](other: Component[I, X])(implicit ev: O $<:<$ (X $\Rightarrow$ Y)): Component[I, Y] $=$ {
+    src.combine(other)(ev(_)(_))
+  }
+}
+\end{lstlisting}
+
+Contrary to the previous type classes, it turns out that we are not able to implement the \textit{Monad}'s \code{(>>=)} (or \code{flatMap}) operator. Note that this is equivalent to saying that we are unable to implement the \textit{ArrowApply}'s \code{app} operator. Writing down these definitions shows how non-sensible both these definitions are:
+
+\begin{lstlisting}[style=InlineScalaStyle]
+implicit class MonadOperators[I, O](val src: Component[I, O]) {
+  def flatMap[X](f: O $\Rightarrow$ Component[I, X]): Component[I, X]
+  def app(implicit ev: I $<:<$ (Component[I, O], I)): Component[I, O]
+}
+\end{lstlisting}
+
+From the perspective of \code{flatMap} it would mean that every time \code{src} produces an output, it is fed to the function \code{f}, which would produce a completely new \comp to be subscribed to the result of \code{flatMap}. This would mean that after $n$ outputs, there are $n$ \comp which are `dynamically' created and that the resulting component will emit $n$ values. The same holds for \code{app}, which would receive a new \comp to invoke with every input it receives.
+
+The fact that \comp is not a monad may seem surprising at first, but is actually supported by Hughes, who gives an example of stream processing (which is similar in behavior to our API, but very different in its implementation) and also concludes that stream processing cannot be fitted into the monadic framework \todo{cite}. He concludes that this is again an example of why not every instance of an \textit{Arrow} type class is automatically a \textit{Monad} as well.
+
 
 
 
