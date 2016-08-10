@@ -71,48 +71,37 @@ In this chapter we present our own API for creating and executing feedback syste
 
 
 \clearpage
-\todo{content here}
-
 \begin{itemize}
-	\item Since we do feedback control for computer science, we want to come up with an API to create feedback systems
+	\item[\checkmark] Since we do feedback control for computer science, we want to come up with an API to create feedback systems
 	\begin{itemize}
-		\item A good API does not yet exist
-		\item Some simple stuff in Python
-		\item Solution from Peti Koch
-	\end{itemize}
-	\item Introduce the ball tracker as a toy example
-	\begin{itemize}
-		\item First on 1 dimension; implemented with for-loops etc.
-		\item Use this throughout the rest of the Feedback Control section
+		\item[\checkmark] A good API does not yet exist
+		\item[\checkmark] Some simple stuff in Python
+		\item[\ding{55}] Solution from Peti Koch
 	\end{itemize}
 	\item Feedback control as ‘working with streams’
 	\begin{itemize}
-		\item A component sits in between 2 streams and performs some sort of transformation
-		\item A component is compositional: connecting components, making feedback loop, zipping $\rightarrow$ a feedback system is the same as a component
-		\item Observation: \textbf{a component is the same as a Mealy Machine}
-		\item Derive the exact type of a component, starting from a Mealy Machine and using category theory
-		\item Observation: \textbf{a component is an Arrow}
+		\item[\checkmark] A component sits in between 2 streams and performs some sort of transformation
+		\item[\checkmark] A component is compositional: connecting components, making feedback loop, zipping $\rightarrow$ a feedback system is the same as a component
+		\item[\checkmark] Observation: \textbf{a component is the same as a Mealy Machine}
+		\item[\checkmark] Derive the exact type of a component, starting from a Mealy Machine and using category theory
+		\item[\checkmark] Observation: \textbf{a component is an Arrow}
 		\item Introduce the operators on Component
 		\begin{itemize}
-			\item Arrow operators (see \LaTeX code)
-%			\begin{itemize}
-%				\item \code{arr :: Arrow a => (b -> c) -> a b c}
-%				\item \code{(>>>) :: Arrow a => a b c -> a c d -> a b d}
-%				\item \code{first :: Arrow a => a b c -> a (b,d) (c,d)}
-%				\item \code{second :: Arrow a => a b c -> a (d,b) (d,c)}
-%				\item \code{(***) :: Arrow a => a b c -> a d e -> a (b,d) (c,e)}
-%				\item \code{(\&\&\&) :: Arrow a => a b c -> a b d -> a b (c,d)}
-%				\item \code{lift2A :: Arrow a => (b -> c -> d) -> a e b ->   a e c -> a e d}
-%				\item \code{loop :: Arrow a => a (b,d) (c,d) -> a b c}
-%			\end{itemize}
-			\item Concat
-			\item Zip
-			\item Feedback
+			\item[\checkmark] Concat
+			\item[\checkmark] Lift (as generalizing over all operators)
+			\item[\checkmark] Arrow operators (see \LaTeX code)
 			\item \textit{$<$many RxMobile operators$>$}
-			\item Lift and LiftA2 (as generalizing over all operators)
+			\item Feedback
 		\end{itemize}
-		\item Ball tracker example with the API
+		\item Second version of the API
+		\begin{itemize}
+			\item Subjects and subscriptions are not how you work with the underlying Rx; this is not a real use case for \subj; use \obs and as few times as possible and as late as possible
+			\item Function \code{Observable[I] $\Rightarrow$ Observable[O]} as basis
+			\item Changes in operators
+			\item Observation: this looks like the \textit{Reader Monad} (it's a function), however, it still does not make sense for \comp to be a \textit{Monad}
+		\end{itemize}
 	\end{itemize}
+	\item Ball tracker example with the API
 \end{itemize}
 
 \todo{below in chap4 with looking back on chap3?}
