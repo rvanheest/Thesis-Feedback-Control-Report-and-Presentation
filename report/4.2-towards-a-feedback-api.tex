@@ -510,7 +510,7 @@ The \textit{Functor} type class (\cref{lst:type-classes-for-monads}) contains a 
 
 The \textit{Applicative} type class (\cref{lst:type-classes-for-monads}) contains two functions, \code{pure} and \code{(<*>)}. We already have the former function in our API, namely \code{from} (\cref{lst:creating-component}). The latter function is almost the same as \code{fmap}, only with the difference that the function is wrapped inside an \textit{Applicative}. The two input parameters of \code{(<*>)} need to be merged into a single \textit{Applicative} where the function from the first parameter is applied to the value from the second parameter. We also already have this functionality in the form of the \code{combine} operator, which combines two instances of \comp using a given function.
 
-\begin{lstlisting}[style=ScalaStyle]
+\begin{lstlisting}[style=ScalaStyle, caption={\textit{Functor} and \textit{Applicative} operators}, label={lst:functor-and-applicative}]
 implicit class Operators[I, O](val src: Component[I, O]) {
   $\ldots$
 
@@ -535,10 +535,33 @@ From the perspective of \code{flatMap} it would mean that every time \code{src} 
 
 The fact that \comp is not a monad may seem surprising at first, but is actually supported by Hughes, who gives an example of stream processing (which is similar in behavior to our API, but very different in its implementation) and also concludes that stream processing cannot be fitted into the monadic framework \todo{cite}. He concludes that this is again an example of why not every instance of an \textit{Arrow} type class is automatically a \textit{Monad} as well.
 
+\subsubsection{Reactive operators}
+Since the \comp interface is written in terms of Rx, we may also want to use some of the operators that are defined on \obs. For example, a components may be a filter or just the functionality that it will skip the first $n$ elements it receives or start by emitting a certain value before responding to the \comp's actual input.
 
+One way of doing this would be to create new components for each of these operations as they are needed while writing the feedback system and performing linear composition on these components. However, this would reduce the expressiveness and readability of the program that is written and would mean a lot of repeats of the same code: \code{x >>> Component(\char`_.$operator1$) >>> Component(\char`_.$operator2$)}.
 
+A better way of doing this would be to add the most commonly used operators to the \comp API. By doing so, we can eliminate writing a lot of the same code, make the API more pleasant to use and improve the readability of the code. In fact, we have already introduced one operator that is also an operator in the Rx libraries and follows the implementation pattern as shown above: \code{map} (\cref{lst:functor-and-applicative}).
 
+Because the implementations of these operators will be almost identical in every case, we first introduce an operator \code{liftRx} (\cref{lst:rx-style-operators}), which lifts an Rx operator into the \comp API such that it can be used in the API as a proper operator. This not only serves the purpose of eliminating duplicate code in the API but can also be used to have a way of lifting an Rx operator that is not present in our API.
 
+Some of the operators present in the API are listed in \cref{lst:rx-style-operators}, though many more can be thought of to be added.
+
+\begin{lstlisting}[style=ScalaStyle, caption={Rx style operators in the \comp API}, label={lst:rx-style-operators}]
+implicit class Operators[I, O](val src: Component[I, O]) {
+  $\ldots$
+
+  def liftRx[Y](f: Observable[O] $\Rightarrow$ Observable[Y]) $=$ src >>> Component(f)
+  
+  def drop(n: Int): Component[I, O] $=$ liftRx(_.drop(n))
+  def filter(predicate: O $\Rightarrow$ Boolean): Component[I, O] $=$ liftRx(_.filter(predicate))
+  def map[X](f: O $\Rightarrow$ X): Component[I, X] $=$ liftRx(_.map(f))
+  def sample(interval: Duration, scheduler: Scheduler $=$ NewThreadScheduler()) $=$ liftRx(_.sample(interval, scheduler))
+  def startWith(o: O): Component[I, O] $=$ liftRx(_.startWith(o))
+  def scan[Y](seed: Y)(combiner: (Y, O) $\Rightarrow$ Y): Component[I, Y] $=$ liftRx(_.scanLeft(seed)(combiner))
+  def take(n: Int): Component[I, O] $=$ liftRx(_.take(n))
+  def throttle(duration: Duration, scheduler: Scheduler $=$ NewThreadScheduler()) $=$ liftRx(_.throttle(duration, scheduler))
+}
+\end{lstlisting}
 
 
 
