@@ -1,9 +1,9 @@
 \section{Towards a feedback API}
 If we want to develop a library or API for feedback control we should keep a couple of things in mind. First of all the API should be production worthy: it should be able to drive production software/hardware and it should be easy for the developers of those systems to put together a feedback loop, without having to understand much about the mathematics that is going on in theoretical control theory. Also the concerns mentioned in the previous section should be kept in mind: the API should not rely on any form of mutable state if this is not desired by the developer, it should be easily able to support concurrency and asynchronicity and should not rely on any regularity in feedback cycles.
 
-The idea by Janert to model a feedback system in the same way as it is drawn (see for example \cref{fig:balltracker-diagram}) is something that looks very appealing to use as a foundation of our API. This means that we create a feedback system by composing smaller entities or by chaining transformations. In the same way for example Scala's collection API is build up, using (monadic) operators to transform and manipulate a collection. Likewise we will use higher order functions to compose feedback systems.
+The idea by Janert to model a feedback system in the same way as it is drawn (see for example \Cref{fig:balltracker-diagram}) is something that looks very appealing to use as a foundation of our API. This means that we create a feedback system by composing smaller entities or by chaining transformations. In the same way for example Scala's collection API is build up, using (monadic) operators to transform and manipulate a collection. Likewise we will use higher order functions to compose feedback systems.
 
-Some of the basic composition operations that are required for this to work are \textit{sequential composition}, which passes the output of the first component as the input of the second component, \textit{parallel composition}, which passes its input to multiple components and combines the output of each component into a single value using a combinator function, \textit{merging the output of two components} into a single value and \textit{feeding back the output of a component to its input} to create a circuit or feedback loop. Other composition operators that one can imagine are operators like the ones found monadic APIs in Scala or Java 8 such as collections, \code{Future}, \code{Try}, \code{Option} or the Rx \obs. Examples of these are \code{map}, \code{filter}, \code{flatMap}, \code{take}, \code{drop}, \code{scan}, etcetera.
+Some of the basic composition operations that are required for this to work are \textit{sequential composition}, which passes the output of the first component as the input of the second component, \textit{parallel composition}, which passes its input to multiple components and combines the output of each component into a single value using a combinator function, \textit{merging the output of two components} into a single value and \textit{feeding back the output of a component to its input} to create a circuit or feedback loop. Other composition operators that one can imagine are operators like the ones found in monadic APIs in Scala or Java 8 such as collections, \code{Future}, \code{Try}, \code{Option} or the Rx \obs. Examples of these are \code{map}, \code{filter}, \code{flatMap}, \code{take}, \code{drop}, \code{scan}, etcetera.
 
 \subsection{Derivation}
 To get to a suitable API we must first of all observe that a component can be thought of as a Mealy Machine \cite{mealy1955-mealymachine}. This is a special variant of the finite-state machine whose output values are determined by both its current input and its current state. It can mathematically be described as a 6-tuple $(\Sigma, \Gamma, S, s_0, \delta, \omega)$ \cite{carroll1989-theoryoffiniteautomata} where
@@ -99,7 +99,7 @@ class RunningAverage(n: Int) extends Component[Double, Double] {
 }
 \end{lstlisting}
 
-Using the \textit{Mutable Component}, calling the \code{work} method in Janert's \comp interface is equivalent to calling \code{update} and \code{action} in sequence. To conform to this interface, we can write our \comp as shown below. In technical terms this is called the coproduct, which we have already seen briefly in \cref{subsec:derivation}.
+Using the \textit{Mutable Component}, calling the \code{work} method in Janert's \comp interface is equivalent to calling \code{update} and \code{action} in sequence. To conform to this interface, we can write our \comp as shown below. In technical terms this is called the coproduct, which we have already seen briefly in \Cref{subsec:derivation}.
 
 \begin{lstlisting}[style=InlineScalaStyle]
 trait Component[I, O] {
@@ -162,7 +162,7 @@ trait Component[I, O] {
 }
 \end{lstlisting}
 
-Now that we have a function \code{update} with type \code{I $\Rightarrow$ (O $\Rightarrow$ Unit) $\Rightarrow$ Unit}, we can use the right associativity law on functions and conclude that \code{update} can also be read as a function which has input type \code{I} and output \code{(O $\Rightarrow$ Unit) $\Rightarrow$ Unit}. Although this return type doesn't seem so useful at first sight, we must remember that this is almost identical to the actual type definition of \obs (see \cref{eq:obs}). The major difference is in the input type of the inner function, which is not \code{Try[Option[O]]} but just \code{O} instead. However, it seems perfectly reasonable that the computation inside a \comp may fail or terminate all computation inside that \comp. Following this reasoning, we can now write our interface as follows:
+Now that we have a function \code{update} with type \code{I $\Rightarrow$ (O $\Rightarrow$ Unit) $\Rightarrow$ Unit}, we can use the right associativity law on functions and conclude that \code{update} can also be read as a function which has input type \code{I} and output \code{(O $\Rightarrow$ Unit) $\Rightarrow$ Unit}. Although this return type doesn't seem so useful at first sight, we must remember that this is almost identical to the actual type definition of \obs (see \Cref{eq:obs}). The major difference is in the input type of the inner function, which is not \code{Try[Option[O]]} but just \code{O} instead. However, it seems perfectly reasonable that the computation inside a \comp may fail or terminate all computation inside that \comp. Following this reasoning, we can now write our interface as follows:
 
 \begin{lstlisting}[style=InlineScalaStyle]
 trait Component[I, O] {
@@ -192,7 +192,7 @@ trait Component[I, O] extends Observer[I] {
 }
 \end{lstlisting}
 
-To get this to work, there is a little bit of plumbing to be done. First of all, we need to get the values received in the \obv into the output \obs and meanwhile transform instances of type \code{I} into instances of type \code{O}. As we do not intent the implementer of the \comp interface to override the input or output functions, we have to introduce a new function into the interface in which the actual functionality of the component can be declared: \code{transform(is: Observable[I]): Observable[O]}. We also introduce a \subj which receives the input events from the \obv methods. As discussed in \cref{subsec:subjects}, a \subj is both an \obv and an \obs, which means that we can implement the output function as applying the new \code{transform} function to this \subj.
+To get this to work, there is a little bit of plumbing to be done. First of all, we need to get the values received in the \obv into the output \obs and meanwhile transform instances of type \code{I} into instances of type \code{O}. As we do not intent the implementer of the \comp interface to override the input or output functions, we have to introduce a new function into the interface in which the actual functionality of the component can be declared: \code{transform(is: Observable[I]): Observable[O]}. We also introduce a \subj which receives the input events from the \obv methods. As discussed in \Cref{subsec:subjects}, a \subj is both an \obv and an \obs, which means that we can implement the output function as applying the new \code{transform} function to this \subj.
 
 \begin{lstlisting}[style=ScalaStyle, caption={\comp interface}, label={lst:component-v1}]
 trait Component[I, O] extends Observer[I] {
@@ -233,7 +233,7 @@ Based on this interface we think we can present a good foundation for the interf
 As mentioned before we have to define operators on the \comp interface in order to construct larger, more complex components from smaller components and to finally reach the state in which we can create a feedback loop using this interface. In this section we will explore the operator space, see which operators are useful to be part of this API and describe the way they are implemented.
 
 \subsubsection{Creating the component}
-It cannot go without notice that creating an instance of \comp is quit heavy lifting (see \cref{lst:running-average-final}). We have to extend from the appropriate interface, come up with a suitable name, specify the input and output types and implement the \code{transform} function. Although this may seem obvious and IDEs like IntelliJ or Eclipse can automatically do most of this itself, it still is a significant amount of boilerplate code. The real essence of this interface is the \code{transform} function, which both takes and returns an \obs. The rest of the interface can be abstracted away into a static function which creates an anonymous instance of \comp given the \code{transform} function (\cref{lst:creating-component}).
+It cannot go without notice that creating an instance of \comp is quit heavy lifting (see \Cref{lst:running-average-final}). We have to extend from the appropriate interface, come up with a suitable name, specify the input and output types and implement the \code{transform} function. Although this may seem obvious and IDEs like IntelliJ or Eclipse can automatically do most of this itself, it still is a significant amount of boilerplate code. The real essence of this interface is the \code{transform} function, which both takes and returns an \obs. The rest of the interface can be abstracted away into a static function which creates an anonymous instance of \comp given the \code{transform} function (\Cref{lst:creating-component}).
 
 The advantage of having this function and calling it \code{apply} is that it can be omitted in its usage. A simple component like a running sum (or integral) can we written as simple as \code{Component[Double, Double](\char`_.scanLeft(0.0)(\char`_ \ + \char`_))}
 
@@ -320,7 +320,7 @@ In general \code{lift} can be viewed as the creation of a new, encapsulating \co
 \subsubsection{Formalizing the operators}
 Before we continue developing new operators, we have to observe that both \code{concat} and \code{apply}/\code{create} satisfy the \textit{Arrow} type class that was described first in 1998 in a paper by John Hughes \todo{cite}. The \textit{Arrow}  type class has similar operators to the \code{Monad} type class, but is defined more generally. Computations that are clearly not a monad can be composed over in the same way as computations that are a monad using this new type class. Just as a monadic type \code{M[A]} is representing a computation that delivers an \code{A}, so an arrow type \code{A[B, C]} is representing a computation with input \code{B} and output \code{C}. With that the dependence on the input of the computation is made explicit.
 
-The \textit{Arrow} type class defines a couple of functions which are listed in \cref{lst:arrow-typeclass} in Haskell. First of all, it defines \code{arr} to be a function that accepts a function from \code{b} to \code{c} as its input and the arrow from \code{b} to \code{c} as its output. This function is completely analogous to the \code{apply} method described earlier, where \code{b} and \code{c} are both of type \obs. Besides that, \textit{Arrow} defines the \code{(>>>)} operator, which composes two arrows together into one single arrow. Here the output of the first arrow is used as an input for the second arrow. This is of course analogue to the \code{concat} operator we just implemented. We define \code{(>>>)} as a second way of writing a linear composition.
+The \textit{Arrow} type class defines a couple of functions which are listed in \Cref{lst:arrow-typeclass} in Haskell. First of all, it defines \code{arr} to be a function that accepts a function from \code{b} to \code{c} as its input and the arrow from \code{b} to \code{c} as its output. This function is completely analogous to the \code{apply} method described earlier, where \code{b} and \code{c} are both of type \obs. Besides that, \textit{Arrow} defines the \code{(>>>)} operator, which composes two arrows together into one single arrow. Here the output of the first arrow is used as an input for the second arrow. This is of course analogue to the \code{concat} operator we just implemented. We define \code{(>>>)} as a second way of writing a linear composition.
 
 \begin{lstlisting}[style=HaskellStyle, caption={\textit{Arrow} type class}, label={lst:arrow-typeclass}]
 class Arrow a where
@@ -329,7 +329,7 @@ class Arrow a where
 \end{lstlisting}
 
 \subsubsection{Parallel composition}
-The careful reader may either have noticed that the definition of an arrow as provided in \cref{lst:arrow-typeclass} is not complete or wonder how to implement an \code{add} function in arrow style. As Hughes shows, this is simple in a monadic context, but the current functions in the \textit{Arrow} type class do not satisfy the need.
+The careful reader may either have noticed that the definition of an arrow as provided in \Cref{lst:arrow-typeclass} is not complete or wonder how to implement an \code{add} function in arrow style. As Hughes shows, this is simple in a monadic context, but the current functions in the \textit{Arrow} type class do not satisfy the need.
 
 \begin{lstlisting}[style=InlineHaskellStyle]
 add :: Arrow a $\Rightarrow$ (a b Int) $\rightarrow$ (a b Int) $\rightarrow$ (a b Int)
@@ -383,7 +383,7 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 }
 \end{lstlisting}
 
-The other two operators that Hughes defines for the \textit{Arrow} type class are \code{(***)} and \code{(\&\&\&)}. The former operator is used in ``\textit{parallel composition}'' of arrows, taking its input consisting of two arrows and merging them into one arrow of tuples. This is done by applying \code{first} to the first input argument and \code{second} to the second. The latter operator, \code{(\&\&\&)}, takes this behavior one step further by specifying that the input type of both input arrows must be the same. With this we can construct a resulting arrow that has an input type \code{b}, whose values are supplied to both arrows, and an output type which is the tuple (or product) of both arrow's results. This type of composition is sometimes referred to as ``\textit{fanout composition}''. Implementations of these operators in the context of \comp are equivalent to the ones in \cref{lst:arrow-typeclass-full}:
+The other two operators that Hughes defines for the \textit{Arrow} type class are \code{(***)} and \code{(\&\&\&)}. The former operator is used in ``\textit{parallel composition}'' of arrows, taking its input consisting of two arrows and merging them into one arrow of tuples. This is done by applying \code{first} to the first input argument and \code{second} to the second. The latter operator, \code{(\&\&\&)}, takes this behavior one step further by specifying that the input type of both input arrows must be the same. With this we can construct a resulting arrow that has an input type \code{b}, whose values are supplied to both arrows, and an output type which is the tuple (or product) of both arrow's results. This type of composition is sometimes referred to as ``\textit{fanout composition}''. Implementations of these operators in the context of \comp are equivalent to the ones in \Cref{lst:arrow-typeclass-full}:
 
 \begin{lstlisting}[style=InlineScalaStyle]
 implicit class Operators[I, O](val src: Component[I, O]) {
@@ -419,7 +419,7 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 \end{lstlisting}
 
 \subsubsection{Problems with parallel composition on \comp}
-Although our implementation of these parallel composition operators in the context of \comp might seem fine at first glance, the observant reader might have spotted some flaws in it. The main concern here is the choice of using \code{zip} in the \code{first} operator. As discussed in section \cref{sec:fastproc-slowcons}, \code{zip} is particularly risky to use given the unpredictable nature of its source streams. This same danger comes up in our implementation of \code{first}, as the inner component might produce more than one element for every received element or as it might start with a certain number of elements before producing elements based on what it receives\footnote{This can be achieved using \code{startWith}, which is a well-known operator for \obs and which we will introduce later in the context of \comp.}.
+Although our implementation of these parallel composition operators in the context of \comp might seem fine at first glance, the observant reader might have spotted some flaws in it. The main concern here is the choice of using \code{zip} in the \code{first} operator. As discussed in section \Cref{sec:fastproc-slowcons}, \code{zip} is particularly risky to use given the unpredictable nature of its source streams. This same danger comes up in our implementation of \code{first}, as the inner component might produce more than one element for every received element or as it might start with a certain number of elements before producing elements based on what it receives\footnote{This can be achieved using \code{startWith}, which is a well-known operator for \obs and which we will introduce later in the context of \comp.}.
 
 Besides that, given that \code{zip} is used in the \code{first} operator, it follows that it is also used in \code{second} and that it is technically used twice in \code{(***)}, \code{(\&\&\&)} and \code{combine}. This is not only twice as risky, but is also fairly inefficient as the underlying Rx code needs to maintain two queues now. We will show that this can be done more efficiently by reducing the uses of \code{zip} to only once per \code{combine} operation.
 
@@ -466,9 +466,9 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 \end{minipage}
 
 \subsubsection{Functor, Applicative, Monad}
-One of the reasons that Hughes introduced the arrow \todo{cite that paper} is that he saw that not all kinds of computations can be described in terms of monads. He uses the parser library by Swierstra and Duponcheel \todo{citation needed} as an example of a structure that can implement the choice combinator from the \textit{MonadPlus} type class but turns out to have no possible implementation for the \textit{Monad}'s \code{(>>=)} operator. Swierstra and Duponcheel's solution to this problem is to discard the use of a monad and instead use a different operator \code{(<*>)} that later became known as part of the \textit{Applicative} type class. Nowadays \textit{Applicative} sits right in the middle between \textit{Functor} and \textit{Monad} and \textit{MonadPlus} not only `inherits' from \textit{Monad} but also from \textit{Alternative}, which already has the choice combinator (see \cref{lst:type-classes-for-monads}).
+One of the reasons that Hughes introduced the arrow \todo{cite that paper} is that he saw that not all kinds of computations can be described in terms of monads. He uses the parser library by Swierstra and Duponcheel \todo{citation needed} as an example of a structure that can implement the choice combinator from the \textit{MonadPlus} type class but turns out to have no possible implementation for the \textit{Monad}'s \code{(>>=)} operator. Swierstra and Duponcheel's solution to this problem is to discard the use of a monad and instead use a different operator \code{(<*>)} that later became known as part of the \textit{Applicative} type class. Nowadays \textit{Applicative} sits right in the middle between \textit{Functor} and \textit{Monad} and \textit{MonadPlus} not only `inherits' from \textit{Monad} but also from \textit{Alternative}, which already has the choice combinator (see \Cref{lst:type-classes-for-monads}).
 
-As an alternative to introducing the \code{(<*>)} operator as Swierstra and Duponcheel did, Hughes introduces the \textit{Arrow} as the answer to combining non-monadic computations. With this he shows that every \textit{Monad} is in fact an \textit{Arrow}, but that not every \textit{Arrow} is a \textit{Monad}. For this he introduces another type class \textit{ArrowApply} (\cref{lst:arrow-apply}), which he shows to be equivalent to the \textit{Monad} type class. From this it follows that for an \textit{Arrow} to be also a \textit{Monad} it must be able to implement the \textit{ArrowApply} type class.
+As an alternative to introducing the \code{(<*>)} operator as Swierstra and Duponcheel did, Hughes introduces the \textit{Arrow} as the answer to combining non-monadic computations. With this he shows that every \textit{Monad} is in fact an \textit{Arrow}, but that not every \textit{Arrow} is a \textit{Monad}. For this he introduces another type class \textit{ArrowApply} (\Cref{lst:arrow-apply}), which he shows to be equivalent to the \textit{Monad} type class. From this it follows that for an \textit{Arrow} to be also a \textit{Monad} it must be able to implement the \textit{ArrowApply} type class.
 
 \begin{minipage}{0.6\linewidth}
 \begin{lstlisting}[style=HaskellStyle, caption={Type classes for monads}, label={lst:type-classes-for-monads}, captionpos=b, numbers=none]
@@ -506,9 +506,9 @@ class Arrow a $\Rightarrow$ ArrowApply a where
 
 In the previous sections we have demonstrated the \comp interface to be an \textit{Arrow}, which, given the discussion above, brings us to the question whether \comp is also a \textit{Functor}, \textit{Applicative} and \textit{Monad} and hence whether we are allowed to add the associated operators to our API.
 
-The \textit{Functor} type class (\cref{lst:type-classes-for-monads}) contains a single function \code{fmap} which accepts a \textit{Functor} and a function as its input and returns a new \textit{Functor} on which the function is applied. Translated to the \comp interface, \code{map}\footnote{\code{fmap} in Haskell is usually referred to in Scala as \code{map}} applies a transformation function to the output of the given \comp. This is simple, as we can already wrap a function in a \comp using the \code{create} operator and we can concatenate two components using \code{concat} or \code{(>>>)}.
+The \textit{Functor} type class (\Cref{lst:type-classes-for-monads}) contains a single function \code{fmap} which accepts a \textit{Functor} and a function as its input and returns a new \textit{Functor} on which the function is applied. Translated to the \comp interface, \code{map}\footnote{\code{fmap} in Haskell is usually referred to in Scala as \code{map}} applies a transformation function to the output of the given \comp. This is simple, as we can already wrap a function in a \comp using the \code{create} operator and we can concatenate two components using \code{concat} or \code{(>>>)}.
 
-The \textit{Applicative} type class (\cref{lst:type-classes-for-monads}) contains two functions, \code{pure} and \code{(<*>)}. We already have the former function in our API, namely \code{from} (\cref{lst:creating-component}). The latter function is almost the same as \code{fmap}, only with the difference that the function is wrapped inside an \textit{Applicative}. The two input parameters of \code{(<*>)} need to be merged into a single \textit{Applicative} where the function from the first parameter is applied to the value from the second parameter. We also already have this functionality in the form of the \code{combine} operator, which combines two instances of \comp using a given function.
+The \textit{Applicative} type class (\Cref{lst:type-classes-for-monads}) contains two functions, \code{pure} and \code{(<*>)}. We already have the former function in our API, namely \code{from} (\Cref{lst:creating-component}). The latter function is almost the same as \code{fmap}, only with the difference that the function is wrapped inside an \textit{Applicative}. The two input parameters of \code{(<*>)} need to be merged into a single \textit{Applicative} where the function from the first parameter is applied to the value from the second parameter. We also already have this functionality in the form of the \code{combine} operator, which combines two instances of \comp using a given function.
 
 \begin{lstlisting}[style=ScalaStyle, caption={\textit{Functor} and \textit{Applicative} operators}, label={lst:functor-and-applicative}]
 implicit class Operators[I, O](val src: Component[I, O]) {
@@ -540,13 +540,13 @@ Since the \comp interface is written in terms of Rx, we may also want to use som
 
 One way of doing this would be to create new components for each of these operations as they are needed while writing the feedback system and performing linear composition on these components. However, this would reduce the expressiveness and readability of the program that is written and would mean a lot of repeats of the same code: \code{x >>> Component(\char`_.$operator1$) >>> Component(\char`_.$operator2$)}.
 
-A better way of doing this would be to add the most commonly used operators to the \comp API. By doing so, we can eliminate writing a lot of the same code, make the API more pleasant to use and improve the readability of the code. In fact, we have already introduced one operator that is also an operator in the Rx libraries and follows the implementation pattern as shown above: \code{map} (\cref{lst:functor-and-applicative}).
+A better way of doing this would be to add the most commonly used operators to the \comp API. By doing so, we can eliminate writing a lot of the same code, make the API more pleasant to use and improve the readability of the code. In fact, we have already introduced one operator that is also an operator in the Rx libraries and follows the implementation pattern as shown above: \code{map} (\Cref{lst:functor-and-applicative}).
 
-Because the implementations of these operators will be almost identical in every case, we first introduce an operator \code{liftRx} (\cref{lst:rx-style-operators}), which lifts an Rx operator into the \comp API such that it can be used in the API as a proper operator. This not only serves the purpose of eliminating duplicate code in the API but can also be used to have a way of lifting an Rx operator that is not present in our API.
+Because the implementations of these operators will be almost identical in every case, we first introduce an operator \code{liftRx} (\Cref{lst:rx-style-operators}), which lifts an Rx operator into the \comp API such that it can be used in the API as a proper operator. This not only serves the purpose of eliminating duplicate code in the API but can also be used to have a way of lifting an Rx operator that is not present in our API.
 
-Some of the operators present in the API are listed in \cref{lst:rx-style-operators}, though many more can be thought of to be added.
+Some of the operators present in the API are listed in \Cref{lst:rx-style-operators}, though many more can be thought of to be added.
 
-\begin{lstlisting}[style=ScalaStyle, caption={Rx style operators in the \comp API}, label={lst:rx-style-operators}]
+\begin{lstlisting}[style=ScalaStyle, caption={Rx style operators}, label={lst:rx-style-operators}]
 implicit class Operators[I, O](val src: Component[I, O]) {
   $\ldots$
 
@@ -563,40 +563,73 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 }
 \end{lstlisting}
 
+Given these new operators, we can reimplement the \code{RunningAverage} example from \Cref{lst:running-average-final}. As all will agree, this looks much better and makes the code more readable and usable!
 
+\begin{lstlisting}[style=ScalaStyle, caption={Implementation of \code{RunningAverage} using the new operators}, label={lst:running-average-with-operators}]
+implicit class RunningAverageOperator(val src: Component[Double, Double]) {
+  def runningAverage: Component[Double, Double] $=$ {
+    src.scan(new Queue[Double]) { case (queue, value) $\Rightarrow$
+        if (queue.length $==$ n)
+          queue.dequeue()
+        queue $+=$ value
+      }
+      .drop(1)
+      .map(queue $\Rightarrow$ queue.sum / queue.size)
+  }
+}
+\end{lstlisting}
 
+\subsubsection{Feedback operator}
+One of the most needed operations in building feedback systems is \textit{feedback}; the notion of feeding back a \comp's output to its input after merging it with the latest element of another stream, while also emitting the same output to the surrounding \comp (see \todo{refer to corresponding image}).
 
+Though this may seem easy given the infrastructure that we have already build around our API, using \code{lift} and subscriptions, there are some technicalities that need to be taken into account in this implementation. First of all, in this situation there is a kind of recursion involved on the stream level. This needs some work as the recursed values' emissions need to be postponed to the appropriate moment rather than being emitted directly. Besides that, although the expected behavior of merging a \comp with \code{setpoint} can be naively implemented using a \code{withLatestFrom}, it turns out that this does not work in the case where \code{setpoint} emits its \emph{only} element before the \comp emits anything. This has to do with the behavior of \code{withLatestFrom} which discards everything that is emitted on the second \obs as long as the first \obs has not yet emitted any values.
 
+The first concern, regarding the recursion, is solvable with the dedicated \code{TrampolineScheduler} which is available in both RxJava and RxMobile. This scheduler is specially created for recursive streams like this one and ``\textit{queues work on the current thread to be executed after the current work completes}'' \todo{cite http://reactivex.io/RxJava/javadoc/rx/schedulers/Schedulers.html\#trampoline()}. As long as the stream that runs back into the input of the \comp is observed on this \sch (\Cref{lst:feedback-operator} \cref{line:observe-on-trampoline}), the recursion should work out fine.
 
+The concern about an early emitting \code{setpoint} is somewhat harder to fix. To solve this, we have to do a \code{combineLatest} on these streams in order to not discriminate against which stream emits first. However, as soon as both streams have emitted their first value, we have to switch to the original \code{withLatestFrom} behavior. This is done in the function \code{loop} in \Cref{lst:feedback-operator} \cref{line:feedback-loop}. Here the first values of each of the two streams are merged into a tuple using the \code{combineLatest} and \code{take(1)}. Notice that the latter causes the stream to complete immediately after the first tuple is emitted. This \code{OnCompleted} is however postponed by \code{flatMap} until the inner-stream is completed. Inside the \code{flatMap} we unpack the tuple again and feed the values as the first new input of the \code{src} component. Here also the merging behavior is `replaced' by \code{withLatestFrom}. Due to our earlier concern with recursion, we have to use the extra \code{Observable.create} here and feed the first tuple to the \code{observer} by hand.
 
+With the \code{loop} function in place, we can implement the \code{feedback} operator as shown in \Cref{lst:feedback-operator} \cref{line:feedback-operator}. As usual we use the \code{lift} operator as the basis of the implementation. Notice how we have to subscribe the output of \code{src} twice, once to the output of the encapsulating component (\code{downstream}) and once to the input of the transducer \code{trd}. Also notice that the order of subscriptions is important here: we first have to subscribe the output of the transducer to \code{src} (after applying the \code{loop} function and observing on the \code{TrampolineScheduler}) and only then subscribe the \code{src}'s output to both \code{downstream} and the transducer. Just as with \code{concat} this order of subscriptions prevents us from losing initial elements.
 
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={Feedback operator}, label={lst:feedback-operator}]
+implicit class Operators[I, O](val src: Component[I, O]) {
+  $\ldots$
 
+  def feedback(f: O $\Rightarrow$ I)(implicit n: Numeric[I]): Component[I, O] $=$ {
+    feedback(Component.create(f))
+  }
 
+  def feedback(trd: Component[O, I])(implicit n: Numeric[I]): Component[I, O] $=$ { |\label{line:feedback-operator}|
+    lift((setpoint, downstream) $\Rightarrow$ {
+      loop(tr.asObservable, setpoint)((t, s) $\Rightarrow$ n.minus(s, t))
+        .observeOn(new TrampolineScheduler) |\label{line:observe-on-trampoline}|
+        .subscribe(src)
 
+      src $+=$ src.asObservable
+        .publish(source $\Rightarrow$ {
+          source.subscribe(downstream)
+          source.subscribe(trd)
 
+          source
+        }).subscribe()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      downstream $+=$ src
+      downstream $+=$ trd
+      trd $+=$ src
+    })
+  }
+  
+  private def loop(trOut: Observable[I], sp: Observable[I])(f: (I, I) $\Rightarrow$ I) $=$ { |\label{line:feedback-loop}|
+    trOut.publish(tos $\Rightarrow$ sp.publish(sps $\Rightarrow$
+      tos.combineLatest(sps)((_, _))
+        .take(1)
+        .flatMap { case (t, s) $\Rightarrow$
+          Observable.create[I](observer $\Rightarrow$ {
+            tos.withLatestFrom(sps.startWith(s))(f).subscribe(observer)
+            observer.onNext(f(t, s))
+          })
+        }))
+  }
+}
+\end{lstlisting}
+\end{minipage}
