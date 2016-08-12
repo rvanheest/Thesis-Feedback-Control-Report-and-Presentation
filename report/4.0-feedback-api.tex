@@ -97,12 +97,12 @@ In this chapter we present our own API for creating and executing feedback syste
 			\item[\checkmark] \textit{$<$many RxMobile operators$>$}
 			\item[\checkmark] Feedback
 		\end{itemize}
-		\item Second version of the API
+		\item[\checkmark] Second version of the API
 		\begin{itemize}
-			\item Subjects and subscriptions are not how you work with the underlying Rx; this is not a real use case for \subj; use \obs and as few times as possible and as late as possible
-			\item Function \code{Observable[I] $\Rightarrow$ Observable[O]} as basis
-			\item Changes in operators
-			\item Observation: this looks like the \textit{Reader Monad} (it's a function), however, it still does not make sense for \comp to be a \textit{Monad}
+			\item[\checkmark] Subjects and subscriptions are not how you work with the underlying Rx; this is not a real use case for \subj; use \obs and as few times as possible and as late as possible
+			\item[\checkmark] Function \code{Observable[I] $\Rightarrow$ Observable[O]} as basis
+			\item[\checkmark] Changes in operators
+			\item[\checkmark] Observation: this looks like the \textit{Reader Monad} (it's a function), however, it still does not make sense for \comp to be a \textit{Monad}
 		\end{itemize}
 	\end{itemize}
 	\item Ball tracker example with the API

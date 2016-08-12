@@ -6,6 +6,7 @@ The idea by Janert to model a feedback system in the same way as it is drawn (se
 Some of the basic composition operations that are required for this to work are \textit{sequential composition}, which passes the output of the first component as the input of the second component, \textit{parallel composition}, which passes its input to multiple components and combines the output of each component into a single value using a combinator function, \textit{merging the output of two components} into a single value and \textit{feeding back the output of a component to its input} to create a circuit or feedback loop. Other composition operators that one can imagine are operators like the ones found in monadic APIs in Scala or Java 8 such as collections, \code{Future}, \code{Try}, \code{Option} or the Rx \obs. Examples of these are \code{map}, \code{filter}, \code{flatMap}, \code{take}, \code{drop}, \code{scan}, etcetera.
 
 \subsection{Derivation}
+\label{subsec:api-derivation}
 To get to a suitable API we must first of all observe that a component can be thought of as a Mealy Machine \cite{mealy1955-mealymachine}. This is a special variant of the finite-state machine whose output values are determined by both its current input and its current state. It can mathematically be described as a 6-tuple $(\Sigma, \Gamma, S, s_0, \delta, \omega)$ \cite{carroll1989-theoryoffiniteautomata} where
 
 \begin{itemize}
@@ -599,7 +600,7 @@ implicit class Operators[I, O](val src: Component[I, O]) {
     feedback(Component.create(f))
   }
 
-  def feedback(trd: Component[O, I])(implicit n: Numeric[I]): Component[I, O] $=$ { |\label{line:feedback-operator}|
+  def feedback(tr: Component[O, I])(implicit n: Numeric[I]): Component[I, O] $=$ { |\label{line:feedback-operator}|
     lift((setpoint, downstream) $\Rightarrow$ {
       loop(tr.asObservable, setpoint)((t, s) $\Rightarrow$ n.minus(s, t))
         .observeOn(new TrampolineScheduler) |\label{line:observe-on-trampoline}|
@@ -608,14 +609,14 @@ implicit class Operators[I, O](val src: Component[I, O]) {
       src $+=$ src.asObservable
         .publish(source $\Rightarrow$ {
           source.subscribe(downstream)
-          source.subscribe(trd)
+          source.subscribe(tr)
 
           source
         }).subscribe()
 
       downstream $+=$ src
-      downstream $+=$ trd
-      trd $+=$ src
+      downstream $+=$ tr
+      tr $+=$ src
     })
   }
   
