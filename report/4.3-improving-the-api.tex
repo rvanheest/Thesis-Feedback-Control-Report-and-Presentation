@@ -69,3 +69,5 @@ def flatMap[X](f: O $\Rightarrow$ Component[I, X]): Component[I, X] $=$ {
   Component(_.publish(is $\Rightarrow$ src.run(is).flatMap(f(_).run(is))))
 }
 \end{lstlisting}
+
+The complete and final version of this API can be found in \Cref{app:feedback-api}.
