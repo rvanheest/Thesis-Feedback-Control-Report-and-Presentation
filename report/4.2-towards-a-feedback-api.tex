@@ -633,3 +633,5 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 }
 \end{lstlisting}
 \end{minipage}
+
+With this last operator added to the API, we think we have a solid framework for creating and executing feedback systems that can be placed in production worthy systems. The interface as well as the set of operators have their foundations in theoretical concepts such as category theory and functional programming and are built on top of the very successful concept of reactive programming. It is our believe that this API can replace any imperatively created feedback system. We will demonstrate this in \Cref{sec:reactive-balltracker} by revisiting the small \textit{ball movement control system} example from \Cref{sec:imperative-balltracker}.
