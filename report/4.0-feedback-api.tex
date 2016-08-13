@@ -2,7 +2,7 @@
 \label{chap:feedback-api}
 While studying the principles of feedback control, we discovered that there are hardly any publicly available libraries or APIs that abstract over the notions of feedback control, allowing us to create and execute feedback systems, both in simulation and in practice. Although surprising at first, this is completely in accordance with the earlier observation that feedback control is not (yet) a commonly used technique in computer science\footnote{Even though we were not able to find existing APIs for this purpose, we would not be surprised if companies turned out to have libraries like this in private.}. Surely, we can write the code ourselves as shown in \Cref{sec:imperative-balltracker}, but that isn't really reusable, creates the danger of copy-paste behavior and is more prone to bugs than a dedicated API.
 
-In this chapter we present our own API for creating and executing feedback systems that can potentially be used in production software. \todo{rest of the introduction and layout of this chapter}
+In this chapter we present our own API for creating and executing feedback systems that can potentially be used in production software. We start off with some related work and describe why there is a need to create a better API. Then we continue with a derivation of the general interface and present the various combinatorial operators that are defined on this interface. Finally we apply the API to the previous chapter's example of textit{ball movement control}.
 
 \input{4.1-related-work}
 
