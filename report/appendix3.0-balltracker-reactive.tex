@@ -10,8 +10,8 @@ import javafx.scene.layout.StackPane
 import javafx.stage.Stage
 
 import applied_duality.reactive.schedulers.JavaFxScheduler
-import fbc2.Component
-import fbc2.commons.Controllers
+import fbc.Component
+import fbc.commons.Controllers
 
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
@@ -33,7 +33,7 @@ class BallTracker extends Application {
   }
 
   def feedbackSystem(pid: Component[Double, Acc]): BallFeedbackSystem $=$ {
-    pid.map(d $\Rightarrow$ scala.math.max(scala.math.min(d * 0.001, 0.2), -0.2))
+    pid.map(d $\Rightarrow$ math.max(math.min(d * 0.001, 0.2), -0.2))
       .scan(new AccVel)(_ accelerate _).drop(1)
       .scan(Ball1D(ballRadius))(_ move _)
       .sample(16 milliseconds)
