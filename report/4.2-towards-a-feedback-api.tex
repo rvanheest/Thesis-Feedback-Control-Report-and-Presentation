@@ -654,13 +654,21 @@ implicit class RunningAverageOperator(val src: Component[Double, Double]) {
 \end{minipage}
 
 \subsubsection{Feedback operator}
-One of the most needed operations in building feedback systems is \textit{feedback}; the notion of feeding back a \comp's output to its input after merging it with the latest element of another stream, while also emitting the same output to the surrounding \comp (see \todo{refer to corresponding image}).
+One of the most needed operations in building feedback systems is \textit{feedback}; the notion of feeding back a \comp's output to its input after merging it with the latest element of another stream, while also emitting the same output to the surrounding \comp (see \cite{fig:feedback-operator}).
 
 Though this may seem easy given the infrastructure that we have already build around our API, using \code{lift} and subscriptions, there are some technicalities that need to be taken into account in this implementation. First of all, in this situation there is a kind of recursion involved on the stream level. This needs some work as the recursed values' emissions need to be postponed to the appropriate moment rather than being emitted directly. Besides that, although the expected behavior of merging a \comp with \code{setpoint} can be naively implemented using a \code{withLatestFrom}, it turns out that this does not work in the case where \code{setpoint} emits its \emph{only} element before the \comp emits anything. This has to do with the behavior of \code{withLatestFrom} which discards everything that is emitted on the second \obs as long as the first \obs has not yet emitted any values.
 
 The first concern, regarding the recursion, is solvable with the dedicated \code{TrampolineScheduler} which is available in both RxJava and RxMobile. This scheduler is specially created for recursive streams like this one and ``\textit{queues work on the current thread to be executed after the current work completes}'' \cite{RxJava-Trampoline-Scheduler}. As long as the stream that runs back into the input of the \comp is observed on this \sch (\Cref{lst:feedback-operator} \cref{line:observe-on-trampoline}), the recursion should work out fine.
 
 The concern about an early emitting \code{setpoint} is somewhat harder to fix. To solve this, we have to do a \code{combineLatest} on these streams in order to not discriminate against which stream emits first. However, as soon as both streams have emitted their first value, we have to switch to the original \code{withLatestFrom} behavior. This is done in the function \code{loop} in \Cref{lst:feedback-operator} \cref{line:feedback-loop}. Here the first values of each of the two streams are merged into a tuple using the \code{combineLatest} and \code{take(1)}. Notice that the latter causes the stream to complete immediately after the first tuple is emitted. This \code{OnCompleted} is however postponed by \code{flatMap} until the inner-stream is completed. Inside the \code{flatMap} we unpack the tuple again and feed the values as the first new input of the \code{src} component. Here also the merging behavior is `replaced' by \code{withLatestFrom}. Due to our earlier concern with recursion, we have to use the extra \code{Observable.create} here and feed the first tuple to the \code{observer} by hand.
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{figures/API-feedback-operator.png}
+	\end{center}
+	\caption{Feedback operator}
+	\label{fig:feedback-operator}
+\end{figure}
 
 With the \code{loop} function in place, we can implement the \code{feedback} operator as shown in \Cref{lst:feedback-operator} \cref{line:feedback-operator}. As usual we use the \code{lift} operator as the basis of the implementation. Notice how we have to subscribe the output of \code{src} twice, once to the output of the encapsulating component (\code{downstream}) and once to the input of the transducer \code{trd}. Also notice that the order of subscriptions is important here: we first have to subscribe the output of the transducer to \code{src} (after applying the \code{loop} function and observing on the \code{TrampolineScheduler}) and only then subscribe the \code{src}'s output to both \code{downstream} and the transducer. Just as with \code{concat} this order of subscriptions prevents us from losing initial elements.
 
