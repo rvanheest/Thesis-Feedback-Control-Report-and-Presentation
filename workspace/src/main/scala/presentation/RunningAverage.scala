@@ -71,10 +71,9 @@ class ReactiveRunningAverage(n: Int) extends ReactiveComponent[Double, Double] {
  */
 trait Component[I, O] extends Observer[I] {
 	val subject = Subject[I]()
-	val observable = subject.publish(transform)
 
 	def transform(i: Observable[I]): Observable[O]
-	def asObservable: Observable[O] = observable
+	def asObservable: Observable[O] = transform(subject)
 
 	override def onNext(i: I) = subject.onNext(i)
 	override def onError(e: Throwable) = subject.onError(e)
@@ -91,15 +90,29 @@ class RunningAverage(n: Int) extends Component[Double, Double] {
 /*
  * Running average with operators
  */
-class RunningAverageWithOperators[X] {
+class RunningAverageWithOperators(n: Int) extends fbc.Component[Double, Double] {
 
-	val runningAverage = (src: fbc.Component[X, Double], n: Int) => 
-		src.scan(mutable.Queue[Double]())((queue, d) => {
-			if (queue.length == n)
-				queue.dequeue()
-			queue.enqueue(d)
-			
-			queue
-		})
-		.map(queue => queue.sum / queue.size)
+	def transform(input: Observable[Double]): Observable[Double] = {
+		input
+			.scanLeft(new mutable.Queue[Double])((queue, d) => {
+				if (queue.length == n)
+					queue.dequeue()
+				queue.enqueue(d)
+
+				queue
+			})
+			.drop(1)
+			.map(queue => queue.sum / queue.size)
+	}
+}
+
+object Test extends App {
+	val comp = new RunningAverageWithOperators(3)
+	comp.asObservable.subscribe(println(_))
+
+	comp.onNext(5)
+	comp.onNext(3)
+	comp.onNext(2)
+	comp.onNext(8)
+	comp.onNext(5)
 }

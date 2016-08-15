@@ -1,0 +1,124 @@
+\section{An extended example - revisited}
+\label{sec:reactive-balltracker}
+To demonstrate the intended usage of our Feedback API, we will return to the toy example developed in section \Cref{sec:imperative-balltracker} and refactor the code such that it uses the powers of both our API and Rx most optimally. The goal of this exercise (especially regarding the feedback system in this application) is to recreate \Cref{fig:balltracker-diagram} in terms of the new API and show the close resemblance between the two.
+
+\subsection{Controller components}
+First of all, we observe that in this feedback system a PID controller is present, which is, as discussed in \Cref{subsec:combining-controllers}, one of the most commonly used controllers in feedback systems. It therefore makes sense to create this controller, as well as it's separate components, and let it be part of the library we create in this chapter. This makes this controller better reusable and prevents many different implementations to be created.
+
+Since a PID controller consists of three subcomponents, the proportional, integral and derivative control, it makes sense to first create these operators using our API. For this we will use \Cref{eq:proportional-control,eq:integral-control-discrete,eq:derivative-control} as a basis. For simplicity we will only consider integral and derivative control with a fixed $\mathrm{d} t$ value in this section, as this case applies to the Ball Movement Control example. The controllers that act on a variable $\mathrm{d} t$ value are implemented almost equally, but just with an extra \code{withLatestFrom} Rx-operator in them.
+
+The proportional controller can be easily written as \code{Component.create(kp *)}, with \code{kp} as the proportional controller gain, and is considered too simple to be put in our library.
+
+The integral controller can be described as a running sum over all the data the \comp receives. This is equivalent to a \code{scan} operator with a summation operator as the accumulator function. This is shown in \Cref{lst:controller-implementations}. Due to the fact that we start with an initial element that is not part of the actual data but is just a seed value, we need to discard this first element using a \code{drop(1)} operation.
+
+The derivative controller is a little more difficult as there does not exist a dedicated operator for this in neither the Rx framework nor in our Feedback API. In the circumstances that we face in this section (fixed $\mathrm{d} t$ value), we can approximate the derivative value of a stream of values as the difference between the current and previous element. Therefore we need to use a sliding buffer followed by a pattern match that calculates the difference between them. Notice that buffer operators are not part of our API but are contained in the Rx API and we hence can use them in combination with the \code{liftRx} operator from our API. The resulting code can be found in \Cref{lst:controller-implementations}. Note that the \code{filter} operator is here because the \code{buffer} operator will produce a list with less values whenever the source stream terminates. This prevents the pattern match inside \code{map} from failing.
+
+Finally, we can now combine these three controllers into the PI and PID controllers using the \code{combine} and \code{<*>} operators.
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={Implementation of the various commonly used controllers}, label={lst:controller-implementations}]
+object Controllers {
+  def integralController[T](ki: T)(implicit n: Numeric[T]): Component[T, T] $=$ {
+    Component.identity[T]
+      .scan(n.zero)(n.plus)
+      .drop(1)
+      .map(n.times(ki, _))
+  }
+
+  def derivativeController[T](kd: T)(implicit n: Numeric[T]): Component[T, T] $=$ {
+    Component.identity[T]
+      .startWith(n.zero)
+      .liftRx(_.buffer(2, 1))
+      .filter(_.size $==$ 2)
+      .map {
+        case fst :: snd :: Nil $\Rightarrow$ n.minus(snd, fst)
+      }
+      .map(n.times(kd, _))
+  }
+  
+  def piController[T](kp: T, ki: T)(implicit n: Numeric[T]): Component[T, T] $=$ {
+    Component.create(kp *).combine(integralController(ki))(n.plus)
+  }
+  
+  def pidController[T](kp: T, ki: T, kd: T)(implicit Numeric[T]): Component[T, T] $=$ {
+    import n._
+    
+    val proportional $=$ Component.create(kp *)
+    val integral $=$ integralController(ki)
+    val derivative $=$ derivativeController(kd)
+    
+    proportional.combine(integral)((p, i) $\Rightarrow$ p + i + _) <*> derivative
+  }
+}
+\end{lstlisting}
+\end{minipage}
+
+\subsection{Ball Movement Control - refactored}
+A next observation to make in our attempts to refactor the Ball Movement Control example is that the code as shown in \Cref{lst:ball-physics,lst:ball-feedback} is defined in terms of tuples to distinguish the horizontal and vertical movement. For our new implementation, however, we will separate these dimensions, write a feedback control system that applies to one-dimensional motion and combine two of these systems to get control for two-dimensional motion.
+
+Compared to \Cref{lst:ball-physics}, we now not only have to define the position, velocity and acceleration in 2 dimensions, but also in 1 dimension (\Cref{lst:ball-physics-new}). This also holds for the \code{Ball} class, which now consists of two classes: \code{Ball1D} and \code{Ball2D}. The old \code{Ball.accelerate(Acceleration)}, which transformed an acceleration into a new position, is split into two stages, transforming an acceleration in a new velocity using \code{AccVel.accelerate} and transforming a velocity into a new position using \code{Ball1D.move}. Note that these transformations resemble the three arrows in the top middle section of \Cref{fig:balltracker-diagram}. Finally we also declare the corresponding \emph{one-dimensional} \code{BallFeedbackSystem} to be a \comp that takes positions and emits \code{Ball1D} instances. 
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={Ball motion physics}, label={lst:ball-physics-new}]
+type Pos $=$ Double
+type Vel $=$ Double
+type Acc $=$ Double
+type Position $=$ (Pos, Pos)
+type Velocity $=$ (Vel, Vel)
+type Acceleration $=$ (Acc, Acc)
+type History $=$ mutable.Queue[Position]
+type BallFeedbackSystem $=$ Component[Pos, Ball1D]
+
+case class AccVel(acceleration: Acc $=$ 0.0, velocity: Vel $=$ 0.0) {
+  def accelerate(acc: Acc): AccVel $=$ AccVel(acc, velocity + acc)
+}
+
+case class Ball1D(acceleration: Acc, velocity: Vel, position: Pos) {
+  def move(av: AccVel): Ball1D $=$ {
+    Ball1D(av.acceleration, av.velocity, position + av.velocity)
+  }
+}
+object Ball1D {
+  def apply(position: Pos): Ball1D $=$ Ball1D(0.0, 0.0, position)
+}
+
+case class Ball2D(acceleration: Acceleration, velocity: Velocity, position: Position)
+object Ball2D {
+  def apply(x: Ball1D, y: Ball1D): Ball2D $=$ {
+    Ball2D((x.acceleration, y.acceleration), (x.velocity, y.velocity), (x.position, y.position))
+  }
+}
+\end{lstlisting}
+\end{minipage}
+
+The next step is to translate \Cref{fig:balltracker-diagram} into an actual \code{BallFeedbackSystem} that is used instead of the imperative version in \Cref{lst:ball-feedback}. As we already established in the \code{integral}, a running sum can be established using a \code{scan} operator with a seed value and an accumulator function. To discard the seed afterwards, \code{drop(1)} is used. Together with a \code{map} to have a bound on the acceleration, we can already create the top row of components in \Cref{fig:balltracker-diagram}. The \code{feedback} operator is then used to create the loop, in combination with the extraction of the position from the \code{Ball1D} object. Finally, since we want a feedback cycle to happen only every 16 milliseconds, we include a \code{sample} operator right before the \code{feedback} operator. The full feedback system is shown in \Cref{lst:ball-feedback-new}.
+
+Note that the drawing of the screen is not done inside the feedback cycle anymore. This is due to the one-dimensionalness of the loop. Also, since this is a side effect that does not have anything to do with the feedback system, we prefer to do this outside the loop. This can be found in \Cref{app:ball-movement-reactive}.
+
+Finally, to create the full two-dimensional system, we combine two instances of the \code{feedbackSystem} and create a \code{Ball2D} object as the output type of the full \comp. Now, given a stream of mouse click events, which acts as a stream of setpoints in regards to the complete system, we can execute this \comp using the \code{run} operator.
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={Ball movement feedback system}, label={lst:ball-feedback-new}]
+val (kp, ki, kd) $=$ (3.0, 0.0001, 80.0)
+
+val pidX $=$ Controllers.pidController(kp, ki, kd)
+val pidY $=$ Controllers.pidController(kp, ki, kd)
+
+def feedbackSystem(pid: Component[Double, Acc]): BallFeedbackSystem $=$ {
+  pid.map(d $\Rightarrow$ math.max(math.min(d * 0.001, 0.2), -0.2))
+    .scan(new AccVel)(_ accelerate _).drop(1)
+    .scan(Ball1D(ballRadius))(_ move _)
+    .sample(16 milliseconds)
+    .feedback(_.position)
+}
+
+def feedback: Component[Position, Ball2D] $=$ {
+  val fbcX $=$ Component.create[Position, Pos](_._1) >>> feedbackSystem(pidX)
+  val fbcY $=$ Component.create[Position, Pos](_._2) >>> feedbackSystem(pidY)
+
+  fbcX.combine(fbcY)(Ball2D(_, _))
+}
+\end{lstlisting}
+\end{minipage}
+
+With this example we show how simple it is to create a working feedback system and how strikingly similar the diagram and the corresponding code look. With the API every developer that has some experience with functional and reactive programming can create its own feedback systems and potentially use them to run large-scale production software.

@@ -16,6 +16,8 @@
 \usepackage[numbers,square,sort]{natbib} % references as [1,2,3] in superscript -> see also http://merkel.zoneo.net/Latex/natbib.php
 \usepackage{xspace} % put a space after an abbreviation in a newcommand
 \usepackage{amsmath}
+\usepackage{amsfonts} % for the \checkmark command
+\usepackage{pifont}% http://ctan.org/pkg/pifont
 \usepackage{graphicx} % to show images
 \usepackage{float} % places the images at precisely the location in the LaTeX code
 \usepackage[bottom]{footmisc} % fix \footnote{} position at the bottom of the page
@@ -44,6 +46,7 @@
 \newcommand{\id}{\texttt{IDisposable}\xspace}
 \newcommand{\itr}{\texttt{Iterator}\xspace}
 \newcommand{\itb}{\texttt{Iterable}\xspace}
+\newcommand{\comp}{\texttt{Component}\xspace}
 
 \definecolor{pgreen}{rgb}{0,0.5,0}
 \definecolor{pgrey}{rgb}{0.5,0.5,0.5}
@@ -68,6 +71,27 @@
   mathescape=true,
   escapechar=|
 }
+\lstdefinestyle{InlineScalaStyle}{
+  frame=none,
+  language=Scala,
+  xleftmargin=.25in,
+  xrightmargin=.25in,
+  showspaces=false,
+  showtabs=false,
+  breaklines=true,
+  showstringspaces=false,
+  breakatwhitespace=true,
+  commentstyle=\color{pgreen},
+  keywordstyle=\color{blue},
+  stringstyle=\color{mauve},
+  basicstyle=\ttfamily,
+  moredelim=[il][\textcolor{pgrey}]{$$},
+  moredelim=[is][\textcolor{pgrey}]{\%\%}{\%\%},
+  numbers=none,
+  columns=flexible,
+  mathescape=true,
+  escapechar=|
+}
 \lstdefinestyle{HaskellStyle}{
   frame=tb,
   language=Haskell,
@@ -87,7 +111,29 @@
   columns=flexible,
   mathescape=true,
   escapechar=|,
-  deletekeywords={Monad, flip, return}
+  deletekeywords={Monad, Functor, flip, return, Int, const}
+}
+\lstdefinestyle{InlineHaskellStyle}{
+  frame=none,
+  language=Haskell,
+  xleftmargin=.25in,
+  xrightmargin=.25in,
+  showspaces=false,
+  showtabs=false,
+  breaklines=true,
+  showstringspaces=false,
+  breakatwhitespace=true,
+  commentstyle=\color{pgreen},
+  keywordstyle=\color{blue},
+  stringstyle=\color{mauve},
+  basicstyle=\ttfamily,
+  moredelim=[il][\textcolor{pgrey}]{$$},
+  moredelim=[is][\textcolor{pgrey}]{\%\%}{\%\%},
+  numbers=none,
+  columns=flexible,
+  mathescape=true,
+  escapechar=|,
+  deletekeywords={Monad, Functor, flip, return, Int, const}
 }
 
 \begin{document}
@@ -128,6 +174,8 @@
 \begin{appendices}
 \crefalias{chapter}{appsec}
 \input{appendix1.0-balltracker-imperative}
+\input{appendix2.0-feedback-api}
+\input{appendix3.0-balltracker-reactive}
 \end{appendices}
 
 \clearpage

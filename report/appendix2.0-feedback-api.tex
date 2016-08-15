@@ -1,0 +1,151 @@
+\chapter{Feedback API}
+\label{app:feedback-api}
+
+\begin{lstlisting}[style=ScalaStyle, caption={\comp class}, label={lst:component-class}]
+import applied_duality.reactive.Observable
+
+class Component[I, O](transform: Observable[I] $\Rightarrow$ Observable[O]) {
+  def run(is: Observable[I]): Observable[O] $=$ transform(is)
+}
+
+object Component {
+  def apply[I, O](transform: Observable[I] $\Rightarrow$ Observable[O]): Component[I, O] $=$ {
+    new Component(transform)
+  }
+
+  def create[I, O](f: I $\Rightarrow$ O): Component[I, O] $=$ Component(_ map f)
+
+  def identity[T]: Component[T, T] $=$ Component[T, T](Predef.identity)
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=ScalaStyle, caption={Operators on \comp}, label={lst:component-operators}]
+import applied_duality.reactive.schedulers.{NewThreadScheduler, TrampolineScheduler}
+import applied_duality.reactive.{Observable, Observer, Scheduler, Subject}
+
+import scala.concurrent.duration.Duration
+
+package object component {
+
+  implicit class ArrowOperators[I, O](val src: Component[I, O]) {
+    def >>>[X](other: Component[O, X]): Component[I, X] $=$ this concat other
+
+    def concat[X](other: Component[O, X]): Component[I, X] $=$ {
+      Component(other.run _ compose src.run)
+    }
+
+    def first[X]: Component[(I, X), (O, X)] $=$ {
+      	this *** Component.identity[X]
+    }
+
+    def second[X]: Component[(X, I), (X, O)] $=$ {
+      Component.identity[X] *** src
+    }
+
+    def ***[X, Y](other: Component[X, Y]): Component[(I, X), (O, Y)] $=$ {
+      Component(_.publish(ixs $\Rightarrow$ {
+        src.run(ixs.map(_._1)).zipWithBuffer(other.run(ixs.map(_._2)))((_, _))
+      }))
+    }
+
+    def &&&[X](other: Component[I, X]): Component[I, (O, X)] $=$ {
+      Component.create[I, (I, I)](a $\Rightarrow$ (a, a)) >>> (src *** other)
+    }
+
+    def combine[X, Y](other: Component[I, X])(f: (O, X) $\Rightarrow$ Y): Component[I, Y] $=$ {
+      (src &&& other) >>> Component.create(f.tupled)
+    }
+  }
+  
+  implicit class ApplicativeOperators[I, O](val src: Component[I, O]) {
+    def map[X](f: O $\Rightarrow$ X): Component[I, X] $=$ {
+      src >>> Component.create(f)
+    }
+
+    def <*>[X, Y](other: Component[I, X])(implicit ev: O $<:<$ (X $\Rightarrow$ Y)): Component[I, Y] $=$ {
+      src.combine(other)(ev(_)(_))
+    }
+
+    def *>[X](other: Component[I, X]): Component[I, X] $=$ {
+      src.map[X $\Rightarrow$ X](_ $\Rightarrow$ identity) <*> other
+    }
+
+    def <*[X](other: Component[I, X]): Component[I, O] $=$ {
+      src.map[X $\Rightarrow$ O](o $\Rightarrow$ _ $\Rightarrow$ o) <*> other
+    }
+
+    def <**>[X](other: Component[I, O $\Rightarrow$ X]): Component[I, X] $=$ {
+      other <*> src
+    }
+  }
+  
+  implicit class RxOperators[I, O](val src: Component[I, O]) {
+    def drop(n: Int): Component[I, O] $=$ liftRx(_.drop(n))
+
+    def dropWhile(predicate: O $\Rightarrow$ Boolean): Component[I, O] $=$ liftRx(_.dropWhile(predicate))
+
+    def filter(predicate: O $\Rightarrow$ Boolean): Component[I, O] $=$ liftRx(_.filter(predicate))
+
+    def liftRx[Y](f: Observable[O] $\Rightarrow$ Observable[Y]) $=$ src >>> Component(f)
+
+    def sample(interval: Duration, scheduler: Scheduler $=$ NewThreadScheduler()) $=$ liftRx(_.sample(interval, scheduler1))
+
+    def startWith(o: O): Component[I, O] $=$ liftRx(_.startWith(o))
+
+    def scan[Y](seed: Y)(combiner: (Y, O) $\Rightarrow$ Y): Component[I, Y] $=$ liftRx(_.scanLeft(seed)(combiner))
+
+    def take(n: Int): Component[I, O] $=$ liftRx(_.take(n))
+
+    def takeUntil(predicate: O $\Rightarrow$ Boolean): Component[I, O] $=$ liftRx(_.takeUntil(predicate))
+
+    def takeWhile(predicate: O $\Rightarrow$ Boolean): Component[I, O] $=$ liftRx(_.takeWhile(predicate))
+
+    def tee(consumer: O $\Rightarrow$ Unit): Component[I, O] $=$ liftRx(_.tee(consumer))
+
+    def tee(observer: Observer[O]): Component[I, O] $=$ liftRx(_.tee(observer))
+
+    def throttle(duration: Duration, scheduler: Scheduler $=$ NewThreadScheduler()) $=$ liftRx(_.throttle(duration, scheduler))
+  }
+  
+  implicit class FeedbackOperators[I, O](val src: Component[I, O]) {
+    private def loop(trOut: Observable[I], sp: Observable[I])(f: (I, I) $\Rightarrow$ I): Observable[I] $=$ {
+      trOut.publish(tos $\Rightarrow$ sp.publish(sps $\Rightarrow$
+        tos.combineLatest(sps)((_, _))
+          .take(1)
+          .flatMap { case (t, s) $\Rightarrow$
+            Observable.create[I](observer $\Rightarrow$ {
+              tos.withLatestFrom(sps.startWith(s))(f).subscribe(observer)
+              observer.onNext(f(t, s))
+            })
+          }))
+    }
+
+    def feedback(trFunc: O $\Rightarrow$ I)(implicit n: Numeric[I]): Component[I, O] $=$ {
+      feedback(Component.create(trFunc))
+    }
+
+    def feedback(tr: Component[O,I])(implicit n: Numeric[I]): Component[I, O] $=$ {
+      feedbackWith(tr)((t, s) $\Rightarrow$ n.minus(s, t))
+    }
+
+    def feedbackWith(trFunc: O $\Rightarrow$ I)(combFunc: (I, I) $\Rightarrow$ I): Component[I, O] $=$ {
+      feedbackWith(Component.create(trFunc))(combFunc)
+    }
+
+    def feedbackWith(transducer: Component[O, I])(combinatorFunc: (I, I) $\Rightarrow$ I): Component[I, O] $=$ {
+      Component(setpoint $\Rightarrow$ {
+        val srcIn $=$ Subject[I]()
+
+        src.run(srcIn)
+          .publish(out $\Rightarrow$ {
+            loop(transducer.run(out), setpoint)(combinatorFunc)
+              .observeOn(new TrampolineScheduler)
+              .subscribe(srcIn)
+
+            out
+          })
+      })
+    }
+  }
+}
+\end{lstlisting}

@@ -1,7 +1,7 @@
-\chapter{Ball movement control}
+\chapter{Ball movement control - Imperative}
 \label{app:ball-movement}
 
-\begin{lstlisting}[style=ScalaStyle, caption={Ball movement control}, label={lst:ball-full}]
+\begin{lstlisting}[style=ScalaStyle, caption={Ball movement control}, label={lst:ball-full-app}]
 import javafx.application.Application
 import javafx.application.Platform.runLater
 import javafx.geometry.Pos
@@ -76,7 +76,7 @@ object BallMovement extends App {
 }
 \end{lstlisting}
 
-\begin{lstlisting}[style=ScalaStyle, caption={Ball movement \code{Draw} object}, label={lst:ball-full}]
+\begin{lstlisting}[style=ScalaStyle, caption={Ball movement \code{Draw} object}, label={lst:ball-full-draw}]
 object Draw {
 
   def draw(pos: Position, setpoint: Position, acc: Acceleration, history: History)(implicit gc: GraphicsContext) $=$ {
@@ -157,7 +157,7 @@ object Draw {
 }
 \end{lstlisting}
 
-\begin{lstlisting}[style=ScalaStyle, caption={Ball movement control}, label={lst:ball-full}]
+\begin{lstlisting}[style=ScalaStyle, caption={Ball movement control}, label={lst:ball-full-utils}]
 package object ballmovement {
 
   val ballRadius $=$ 20.0

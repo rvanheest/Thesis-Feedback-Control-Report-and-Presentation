@@ -1,0 +1,234 @@
+\chapter{Ball movement control - Reactive}
+\label{app:ball-movement-reactive}
+
+\begin{lstlisting}[style=ScalaStyle, caption={Ball movement control}, label={lst:ball-full-app-reactive}]
+import javafx.application.Application
+import javafx.rx.Events
+import javafx.scene.Scene
+import javafx.scene.canvas.Canvas
+import javafx.scene.layout.StackPane
+import javafx.stage.Stage
+
+import applied_duality.reactive.schedulers.JavaFxScheduler
+import fbc.Component
+import fbc.commons.Controllers
+
+import scala.concurrent.duration.DurationInt
+import scala.language.postfixOps
+
+class BallTracker extends Application {
+
+  val (kp, ki, kd) $=$ (3.0, 0.0001, 80.0)
+
+  val pidX $=$ Controllers.pidController(kp, ki, kd)
+  val pidY $=$ Controllers.pidController(kp, ki, kd)
+
+  def feedback: Component[Position, Ball2D] $=$ {
+    val fbcX $=$ Component.create[Position, Pos](_._1) >>> feedbackSystem(pidX)
+    val fbcY $=$ Component.create[Position, Pos](_._2) >>> feedbackSystem(pidY)
+
+    fbcX.combine(fbcY)(Ball2D(_, _))
+  }
+
+  def feedbackSystem(pid: Component[Double, Acc]): BallFeedbackSystem $=$ {
+    pid.map(d $\Rightarrow$ math.max(math.min(d * 0.001, 0.2), -0.2))
+      .scan(new AccVel)(_ accelerate _).drop(1)
+      .scan(Ball1D(ballRadius))(_ move _)
+      .sample(16 milliseconds)
+      .feedback(_.position)
+  }
+
+  def start(stage: Stage) $=$ {
+    val canvas $=$ new Canvas(width, height)
+    implicit val gc $=$ canvas.getGraphicsContext2D
+    Draw.drawInit
+
+    val root $=$ new StackPane(canvas)
+    root setAlignment javafx.geometry.Pos.TOP_LEFT
+
+    val history $=$ new History
+
+    root.mouseClicked
+      .map(event $\Rightarrow$ (event.getX, event.getY))
+      .publish(clicks $\Rightarrow$ feedback.run(clicks).withLatestFrom(clicks)((_, _)))
+      .observeOn(JavaFxScheduler())
+      .tee(x $\Rightarrow$ {
+        val (ball, goal) $=$ x
+        Draw.draw(ball.position, goal, ball.acceleration, history)
+      })
+      .map(_._1.position)
+      .buffer(5)
+      .map(_.last)
+      .subscribe(pos $\Rightarrow$ {
+        history.synchronized {
+          if (history.size $>=$ 50)
+            history dequeue()
+          history enqueue pos
+        }
+      })
+
+    stage setScene new Scene(root, width, height)
+    stage setTitle "Balltracker"
+    stage show()
+  }
+}
+
+object BallTracker extends App {
+  Application.launch(classOf[BallTracker])
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=ScalaStyle, caption={Ball movement \code{Draw} object}, label={lst:ball-full-draw-reactive}]
+import javafx.scene.canvas.GraphicsContext
+import javafx.scene.paint.Color
+import javafx.scene.shape.StrokeLineCap
+
+object Draw {
+
+  def draw(pos: Position, setpoint: Position, acc: Acceleration, history: History)(implicit gc: GraphicsContext) $=$ {
+    drawBackground
+    drawHistory(history)
+    drawLine(pos, setpoint)
+    drawSetpoint(setpoint)
+    drawBall(pos)
+    drawVectors(pos, acc)
+  }
+
+  def drawInit(implicit gc: GraphicsContext) $=$ {
+    drawBackground
+    drawBall(ballRadius, ballRadius)
+  }
+
+  def drawBackground(implicit gc: GraphicsContext) $=$ {
+    gc.setFill(Color.rgb(231, 212, 146))
+    gc.fillRect(0, 0, width, height)
+  }
+
+  def drawBall(point: Position)(implicit gc: GraphicsContext) $=$ {
+    val (x, y) $=$ point
+    val diameter $=$ 2 * ballRadius
+
+    gc.setFill(Color.rgb(123, 87, 71))
+    gc.fillOval(x - ballRadius, y - ballRadius, diameter, diameter)
+  }
+
+  def drawSetpoint(setpoint: Position)(implicit gc: GraphicsContext) $=$ {
+    val (x, y) $=$ setpoint
+
+    val radius $=$ ballRadius / 4
+    val diameter $=$ radius * 2
+
+    gc.setFill(Color.rgb(161, 90, 90))
+    gc.fillOval(x - radius, y - radius, diameter, diameter)
+  }
+
+  def drawLine(ball: Position, setpoint: Position)(implicit gc: GraphicsContext) $=$ {
+    gc.setStroke(Color.rgb(96, 185, 154))
+    gc.setLineWidth(1.0)
+    gc.setLineDashes(8.0, 14.0)
+
+    gc.beginPath()
+    (gc.moveTo _).tupled(setpoint)
+    (gc.lineTo _).tupled(ball)
+    gc.stroke()
+    gc.setLineDashes()
+  }
+
+  def drawVectors(pos: Position, acc: Acceleration)(implicit gc: GraphicsContext) $=$ {
+    val (px, py) $=$ pos
+    val (ax, ay) $=$ acc
+
+    gc.setStroke(Color.rgb(247, 120, 37))
+    gc.setLineWidth(8)
+    gc.setLineCap(StrokeLineCap.ROUND)
+
+    gc.beginPath()
+    gc.moveTo(px, py)
+    gc.lineTo(px - ax * 300, py)
+    gc.stroke()
+
+    gc.beginPath()
+    gc.lineTo(px, py)
+    gc.lineTo(px, py - ay * 300)
+    gc.stroke()
+  }
+
+  def drawHistory(history: History)(implicit gc: GraphicsContext) $=$ {
+    history.synchronized {
+      history.zipWithIndex.foreach(item $\Rightarrow$ {
+        val ((x, y), index) $=$ item
+        val size $=$ history.size
+        val alpha $=$ (index: Double) / size
+
+        gc.setFill(Color.rgb(96, 185, 154, alpha))
+        gc.fillOval(x, y, 10, 10)
+      })
+    }
+  }
+}
+\end{lstlisting}
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={Ball movement control}, label={lst:ball-full-utils-reactive}]
+import scala.collection.mutable
+
+package object balltracker {
+
+  val ballRadius $=$ 20.0
+  val width $=$ 1024
+  val height $=$ 768
+
+  type Pos $=$ Double
+  type Vel $=$ Double
+  type Acc $=$ Double
+  type Position $=$ (Pos, Pos)
+  type Velocity $=$ (Vel, Vel)
+  type Acceleration $=$ (Acc, Acc)
+  type History $=$ mutable.Queue[Position]
+  type BallFeedbackSystem $=$ Component[Pos, Ball1D]
+
+  case class AccVel(acceleration: Acc $=$ 0.0, velocity: Vel $=$ 0.0) {
+    def accelerate(acc: Acc): AccVel $=$ {
+      AccVel(acc, velocity + acc)
+    }
+  }
+
+  case class Ball1D(acceleration: Acc, velocity: Vel, position: Pos) {
+    def move(av: AccVel): Ball1D $=$ {
+      Ball1D(av.acceleration, av.velocity, position + av.velocity)
+    }
+  }
+  object Ball1D {
+    def apply(position: Pos): Ball1D $=$ Ball1D(0.0, 0.0, position)
+  }
+
+  case class Ball2D(acceleration: Acceleration, velocity: Velocity, position: Position)
+  object Ball2D {
+    def apply(x: Ball1D, y: Ball1D): Ball2D $=$ {
+      Ball2D((x.acceleration, y.acceleration), (x.velocity, y.velocity), (x.position, y.position))
+    }
+  }
+}
+\end{lstlisting}
+\end{minipage}
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={JavaFx/Rx interface}, label={lst:ball-full-rx-reactive}]
+package object rx {
+
+  implicit def toHandler[T $<:$ Event](action: T $\Rightarrow$ Unit): EventHandler[T] $=$ {
+    new EventHandler[T] { override def handle(e: T): Unit $=$ action(e) }
+  }
+
+  implicit class Events(val node: Node) extends AnyVal {
+    def getEvent[T $<:$ InputEvent](event: EventType[T]): Observable[T] $=$ Observable.create[T](observer $\Rightarrow$ {
+      val handler $=$ (e: T) $\Rightarrow$ observer.onNext(e)
+      node.addEventHandler(event, handler)
+      observer $+=$ Subscription { node.removeEventHandler(event, handler) }
+    })
+
+    def mouseClicked: Observable[MouseEvent] $=$ getEvent(MouseEvent.MOUSE_CLICKED)
+  }
+}
+\end{lstlisting}
+\end{minipage}

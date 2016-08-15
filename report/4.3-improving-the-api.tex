@@ -1,0 +1,77 @@
+\section{Improvements on the API}
+The reader that is experienced with the concepts of Rx may have spotted an interesting point in the implementations of the operators in the previous section. This already becomes apparent from the implementation of \code{concat} in \Cref{lst:concat-operator,lst:concat-revised}. Although the purpose of this operator is to connect two instances of \comp in a linear composition, most of the work is spend on administrative work to subscribe streams to each other and add unsubscribe handlers. Also note again that the order in which these subscribe calls are executed is actually important!
+
+One might argue that this is just how this operator is supposed to be set up for it to work correctly. The experienced Rx user will however respond to this by observing that all we are doing is connecting various instances of \subj in a somewhat complex manner. This is true, given the implementation of the \comp interface in \Cref{lst:component-v1}. As derived in \Cref{subsec:api-derivation}, a \comp must be an object that received elements of one type and internally transform these into another type and push out these new elements to those who are subscribed to it. Also we determined in \Cref{lst:component-v1} that the essence of \comp is the \code{transform} function which transforms a stream of elements of one type into a stream of elements of another type. This also becomes apparent in the \code{apply} function in \Cref{lst:creating-component}, which precisely has this transformation as its argument. The ceremony that is required to make this work in \Cref{lst:component-v1} involves the \subj, \obv and the associated subscription management that becomes visible in \Cref{lst:concat-operator,lst:concat-revised}.
+
+The refactoring we propose in this section is to remove these ceremonial elements from the \comp interface and to really make the \code{transform} function the essence of the interface. For this we remove the \subj, the associated \code{\char`_subscription} value as well as the inheritance from \code{Observer[I]}. What we end up with is a simple class \comp with a \code{transform} function of type \code{Observable[I] $\Rightarrow$ Observable[O]} as its argument and in single method called \code{run} that transforms an input stream into an output stream (\Cref{lst:component-v2}). The associated \code{apply} function is changed accordingly.
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={Revised version of the \comp interface}, label={lst:component-v2}]
+class Component[I, O](transform: Observable[I] $\Rightarrow$ Observable[O]) {
+
+  def run(is: Observable[I]): Observable[O] $=$ {
+    transform(is)
+  }
+}
+object Component {
+  def apply[I, O](transform: Observable[I] $\Rightarrow$ Observable[O]): Component[I, O] $=$ {
+    new Component(transform)
+  }
+  $\ldots$
+}
+\end{lstlisting}
+\end{minipage}
+
+Due to the way the operators are implemented we are forced to change only three of them, which we will refer to as the primative operators. These are \code{concat}, \code{(***)} and \code{feedback}. All the other operators are composed from these three operators and the \code{apply} function. The primative operators can be recognized in the previous section as those operators that were implemented in terms of \code{lift}. With the introduction of this revised version of \comp we will no longer have a need for \code{lift} and we can therefore discard this operator.  The new implementations of these primitive operators are shown in \Cref{lst:primative-operator-revisions}
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={Revised implementations of the primitive operators}, label={lst:primative-operator-revisions}]
+implicit class Operators[I, O](val src: Component[I, O]) {
+  def concat[X](other: Component[O, X]): Component[I, X] $=$ {
+    Component(other.run _ compose src.run)
+  }
+  
+  def ***[X, Y](other: Component[X, Y]): Component[(I, X), (O, Y)] $=$ {
+    Component(_.publish(ixs $\Rightarrow$ {
+      src.run(ixs.map(_._1)).zipWithBuffer(other.run(ixs.map(_._2)))((_, _))
+    }))
+  }
+  
+  def feedback(tr: Component[O, I](implicit n: Numeric[I]): Component[I, O] $=$ {
+    import n._
+    
+    Component(setpoint $\Rightarrow$ {
+      val srcIn $=$ Subject[I]()
+      
+      src.run(srcIn)
+        .publish(out $\Rightarrow$ {
+          loop(tr.run(out), setpoint)((t, s) $\Rightarrow$ s - t)
+            .observeOn(new TrampolineScheduler)
+            .subscribe(srcIn)
+
+          out
+        })
+    })
+  }
+  $\ldots$
+}
+\end{lstlisting}
+\end{minipage}
+
+Finally we will briefly revisit the issue regarding the \comp being a \textit{Monad}. This becomes even more interesting since the \comp is now reduced to a single function. As is known from for example Haskell, the \textit{function} is considered to be a \textit{Monad}:
+
+\begin{lstlisting}[style=InlineHaskellStyle]
+instance Monad (($\rightarrow$) r) where
+  return = const
+  f >>= k = $\lambda$r $\rightarrow$ k (f r) r
+\end{lstlisting}
+
+Therefore we can conclude that also \comp is actually a \textit{Monad} and we must be able to write an implementation for it. However, as we have argued before, it does not make sense to make \comp into a \textit{Monad} given its context and the behavior of \code{flatMap}. Therefore we still reject \code{flatMap} as an operator in our API.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+def flatMap[X](f: O $\Rightarrow$ Component[I, X]): Component[I, X] $=$ {
+  Component(_.publish(is $\Rightarrow$ src.run(is).flatMap(f(_).run(is))))
+}
+\end{lstlisting}
+
+The complete and final version of this API can be found in \Cref{app:feedback-api}.
