@@ -95,7 +95,7 @@ The next step is to translate \Cref{fig:balltracker-diagram} into an actual \cod
 
 Note that the drawing of the screen is not done inside the feedback cycle anymore. This is due to the one-dimensionalness of the loop. Also, since this is a side effect that does not have anything to do with the feedback system, we prefer to do this outside the loop. This can be found in \Cref{app:ball-movement-reactive}.
 
-Finally, to create the full two-dimensional system, we combine two instances of the \code{feedbackSystem} and create a \code{Ball2D} object as the output type of the full \comp. Now, given a stream of mouse click events, we can execute this \comp using the \code{run} operator.
+Finally, to create the full two-dimensional system, we combine two instances of the \code{feedbackSystem} and create a \code{Ball2D} object as the output type of the full \comp. Now, given a stream of mouse click events, which acts as a stream of setpoints in regards to the complete system, we can execute this \comp using the \code{run} operator.
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Ball movement feedback system}, label={lst:ball-feedback-new}]
@@ -120,3 +120,5 @@ def feedback: Component[Position, Ball2D] $=$ {
 }
 \end{lstlisting}
 \end{minipage}
+
+With this example we show how simple it is to create a working feedback system and how strikingly similar the diagram and the corresponding code look. With the API every developer that has some experience with functional and reactive programming can create its own feedback systems and potentially use them to run large-scale production software.
