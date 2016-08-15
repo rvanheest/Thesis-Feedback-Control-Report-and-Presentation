@@ -18,9 +18,7 @@ import scala.language.postfixOps
 
 class BallTracker extends Application {
 
-  val kp $=$ 3.0
-  val ki $=$ 0.0001
-  val kd $=$ 80.0
+  val (kp, ki, kd) $=$ (3.0, 0.0001, 80.0)
 
   val pidX $=$ Controllers.pidController(kp, ki, kd)
   val pidY $=$ Controllers.pidController(kp, ki, kd)
@@ -37,7 +35,7 @@ class BallTracker extends Application {
       .scan(new AccVel)(_ accelerate _).drop(1)
       .scan(Ball1D(ballRadius))(_ move _)
       .sample(16 milliseconds)
-      .feedback(_ position)
+      .feedback(_.position)
   }
 
   def start(stage: Stage) $=$ {

@@ -91,16 +91,25 @@ object Ball2D {
 \end{lstlisting}
 \end{minipage}
 
-The next step is to translate \Cref{fig:balltracker-diagram} into an actual \code{BallFeedbackSystem} that is used instead of the imperative version in \Cref{lst:ball-feedback}.
+The next step is to translate \Cref{fig:balltracker-diagram} into an actual \code{BallFeedbackSystem} that is used instead of the imperative version in \Cref{lst:ball-feedback}. As we already established in the \code{integral}, a running sum can be established using a \code{scan} operator with a seed value and an accumulator function. To discard the seed afterwards, \code{drop(1)} is used. Together with a \code{map} to have a bound on the acceleration, we can already create the top row of components in \Cref{fig:balltracker-diagram}. The \code{feedback} operator is then used to create the loop, in combination with the extraction of the position from the \code{Ball1D} object. Finally, since we want a feedback cycle to happen only every 16 milliseconds, we include a \code{sample} operator right before the \code{feedback} operator. The full feedback system is shown in \Cref{lst:ball-feedback-new}.
+
+Note that the drawing of the screen is not done inside the feedback cycle anymore. This is due to the one-dimensionalness of the loop. Also, since this is a side effect that does not have anything to do with the feedback system, we prefer to do this outside the loop. This can be found in \Cref{app:ball-movement-reactive}.
+
+Finally, to create the full two-dimensional system, we combine two instances of the \code{feedbackSystem} and create a \code{Ball2D} object as the output type of the full \comp. Now, given a stream of mouse click events, we can execute this \comp using the \code{run} operator.
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Ball movement feedback system}, label={lst:ball-feedback-new}]
+val (kp, ki, kd) $=$ (3.0, 0.0001, 80.0)
+
+val pidX $=$ Controllers.pidController(kp, ki, kd)
+val pidY $=$ Controllers.pidController(kp, ki, kd)
+
 def feedbackSystem(pid: Component[Double, Acc]): BallFeedbackSystem $=$ {
   pid.map(d $\Rightarrow$ math.max(math.min(d * 0.001, 0.2), -0.2))
     .scan(new AccVel)(_ accelerate _).drop(1)
     .scan(Ball1D(ballRadius))(_ move _)
     .sample(16 milliseconds)
-    .feedback(_ position)
+    .feedback(_.position)
 }
 
 def feedback: Component[Position, Ball2D] $=$ {
@@ -111,17 +120,3 @@ def feedback: Component[Position, Ball2D] $=$ {
 }
 \end{lstlisting}
 \end{minipage}
-
-
-\todo{Ball Tracker example by using our API}
-
-\begin{itemize}
-	\item[\checkmark] P/I/D/PI/PID controllers as standard components
-	\item the feedback system
-		\begin{itemize}
-			\item decouple horizontal and vertical feedback systems
-			\item describe 1D feedback system (just `rewrite' the image to code!)
-			\item combine feedback systems to get 2D behavior
-		\end{itemize}
-	\item refer to \Cref{app:ball-movement-reactive} and put the full code there.
-\end{itemize}
