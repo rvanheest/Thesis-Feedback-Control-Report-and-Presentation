@@ -108,14 +108,14 @@ package object component {
   }
   
   implicit class FeedbackOperators[I, O](val src: Component[I, O]) {
-    private def loop(trOut: Observable[I], sp: Observable[I])(f: (I, I) $\Rightarrow$ I): Observable[I] $=$ {
-      trOut.publish(tos $\Rightarrow$ sp.publish(sps $\Rightarrow$
+    private def loop[T, S](transOut: Observable[T], setpoint: Observable[S]) (combinator: (T, S) $\Rightarrow$ I): Observable[I] $=$ {
+      transOut.publish(tos $\Rightarrow$ setpoint.publish(sps $\Rightarrow$
         tos.combineLatest(sps)((_, _))
           .take(1)
           .flatMap { case (t, s) $\Rightarrow$
             Observable.create[I](observer $\Rightarrow$ {
-              tos.withLatestFrom(sps.startWith(s))(f).subscribe(observer)
-              observer.onNext(f(t, s))
+              tos.withLatestFrom(sps.startWith(s))(combinator).subscribe(observer)
+              observer.onNext(combinator(t, s))
             })
           }))
     }
@@ -128,11 +128,11 @@ package object component {
       feedbackWith(tr)((t, s) $\Rightarrow$ n.minus(s, t))
     }
 
-    def feedbackWith(trFunc: O $\Rightarrow$ I)(combFunc: (I, I) $\Rightarrow$ I): Component[I, O] $=$ {
+    def feedbackWith[T, S](transducerFunc: O $\Rightarrow$ T)                         (combinatorFunc: (T, S) $\Rightarrow$ I): Component[S, O] $=$ {
       feedbackWith(Component.create(trFunc))(combFunc)
     }
 
-    def feedbackWith(transducer: Component[O, I])(combinatorFunc: (I, I) $\Rightarrow$ I): Component[I, O] $=$ {
+    def feedbackWith[T, S](transducer: Component[O, T])                  (combinatorFunc: (T, S) $\Rightarrow$ I): Component[S, O] $=$ {
       Component(setpoint $\Rightarrow$ {
         val srcIn $=$ Subject[I]()
 

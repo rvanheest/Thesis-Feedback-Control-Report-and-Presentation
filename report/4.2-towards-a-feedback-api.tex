@@ -654,7 +654,7 @@ implicit class RunningAverageOperator(val src: Component[Double, Double]) {
 \end{minipage}
 
 \subsubsection{Feedback operator}
-One of the most needed operations in building feedback systems is \textit{feedback}; the notion of feeding back a \comp's output to its input after merging it with the latest element of another stream, while also emitting the same output to the surrounding \comp (see \cite{fig:feedback-operator}).
+One of the most needed operations in building feedback systems is \textit{feedback}; the notion of feeding back a \comp's output to its input after merging it with the latest element of another stream, while also emitting the same output to the surrounding \comp (see \Cref{fig:feedback-operator}).
 
 Though this may seem easy given the infrastructure that we have already build around our API, using \code{lift} and subscriptions, there are some technicalities that need to be taken into account in this implementation. First of all, in this situation there is a kind of recursion involved on the stream level. This needs some work as the recursed values' emissions need to be postponed to the appropriate moment rather than being emitted directly. Besides that, although the expected behavior of merging a \comp with \code{setpoint} can be naively implemented using a \code{withLatestFrom}, it turns out that this does not work in the case where \code{setpoint} emits its \emph{only} element before the \comp emits anything. This has to do with the behavior of \code{withLatestFrom} which discards everything that is emitted on the second \obs as long as the first \obs has not yet emitted any values.
 
@@ -701,14 +701,14 @@ implicit class Operators[I, O](val src: Component[I, O]) {
     })
   }
   
-  private def loop(trOut: Observable[I], sp: Observable[I])(f: (I, I) $\Rightarrow$ I) $=$ { |\label{line:feedback-loop}|
-    trOut.publish(tos $\Rightarrow$ sp.publish(sps $\Rightarrow$
+  private def loop[T, S](transOut: Observable[T], setpoint: Observable[S]) (combinator: (T, S) $\Rightarrow$ I): Observable[I] $=$ { |\label{line:feedback-loop}|
+    transOut.publish(tos $\Rightarrow$ setpoint.publish(sps $\Rightarrow$
       tos.combineLatest(sps)((_, _))
         .take(1)
         .flatMap { case (t, s) $\Rightarrow$
           Observable.create[I](observer $\Rightarrow$ {
-            tos.withLatestFrom(sps.startWith(s))(f).subscribe(observer)
-            observer.onNext(f(t, s))
+            tos.withLatestFrom(sps.startWith(s))(combinator).subscribe(observer)
+            observer.onNext(combinator(t, s))
           })
         }))
   }
