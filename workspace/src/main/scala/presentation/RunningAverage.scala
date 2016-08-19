@@ -1,9 +1,9 @@
 package presentation
 
 import applied_duality.reactive.Observable
-
 import applied_duality.reactive.Subject
 import applied_duality.reactive.Observer
+import fbc.Component
 
 import scala.collection.mutable
 
@@ -69,7 +69,7 @@ class ReactiveRunningAverage(n: Int) extends ReactiveComponent[Double, Double] {
 /*
  * The real Component interface
  */
-trait Component[I, O] extends Observer[I] {
+trait RealComponent[I, O] extends Observer[I] {
 	val subject = Subject[I]()
 
 	def transform(i: Observable[I]): Observable[O]
@@ -79,7 +79,7 @@ trait Component[I, O] extends Observer[I] {
 	override def onError(e: Throwable) = subject.onError(e)
 	override def onCompleted() = subject.onCompleted()
 }
-class RunningAverage(n: Int) extends Component[Double, Double] {
+class RunningAverage(n: Int) extends RealComponent[Double, Double] {
 	val queue = mutable.Queue[Double]()
 
 	def transform(ts: Observable[Double]) = ts.tee(_ => if (queue.length == n) queue.dequeue)
@@ -90,7 +90,7 @@ class RunningAverage(n: Int) extends Component[Double, Double] {
 /*
  * Running average with operators
  */
-class RunningAverageWithOperators(n: Int) extends fbc.Component[Double, Double] {
+class RunningAverageWithOperators(n: Int) extends Component[Double, Double] {
 
 	def transform(input: Observable[Double]): Observable[Double] = {
 		input
