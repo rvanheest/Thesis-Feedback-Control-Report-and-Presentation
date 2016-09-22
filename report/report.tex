@@ -25,7 +25,7 @@
 \usepackage{caption} % used for multiple images in one figure
 \usepackage{subcaption} % used for multiple images in one figure
 \usepackage[nameinlink]{cleveref}
-\usepackage[toc,page]{appendix}
+\usepackage[titletoc, page]{appendix}
 
 \newdateformat{monthyeardate}{\monthname[\THEMONTH], \THEYEAR}
 
@@ -145,6 +145,7 @@
 \input{0.0-preface}
 
 \clearpage
+\setcounter{tocdepth}{1}
 {\hypersetup{linkcolor = black} \tableofcontents}
 
 \clearpage
