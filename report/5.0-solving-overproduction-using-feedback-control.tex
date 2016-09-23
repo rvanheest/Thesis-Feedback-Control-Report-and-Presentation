@@ -1,4 +1,32 @@
 \chapter{Solving overproduction with feedback control}
 \label{chap:solving-overproduction}
 
+\begin{itemize}
+	\item Distinction between hot and cold - we're only considering cold, as hot is not able to handle backpressure
+	\item Bring handling backpressure to the start of the stream
+	\item Feedback control of buffer - general overview of idea + diagram
+	\item Requestable interface
+		\begin{itemize}
+			\item request items and let them come down the stream on their own terms (i.e. in a reactive way)
+			\item some implementations of Requestable (iterable collection, Database ResultSet)
+		\end{itemize}
+	\item Implementation of BackpressureObservable
+		\begin{itemize}
+			\item feedback system fills the queue
+			\item reactively pull data from the queue and send it downstream (exposed as Observable)
+		\end{itemize}
+	\item Controller
+		\begin{itemize}
+			\item PID control, why it doesn't work here
+			\item relation with Janert
+			\item incremental controller
+		\end{itemize}
+	\item How it works in practice
+		\begin{itemize}
+			\item backpressure examples, but then with the feedback solution
+			\item show graphs of how many items get requested each time
+		\end{itemize}
+	\item Conclusion
+\end{itemize}
+
 \todo{content here}
