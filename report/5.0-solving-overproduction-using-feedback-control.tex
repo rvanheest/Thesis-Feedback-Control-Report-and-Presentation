@@ -9,12 +9,14 @@ The central problem here is that we want a single reactive interface to share be
 
 In this chapter we will propose an alternative to backpressure that makes use of the feedback systems described in \Cref{chap:intro-to-feedback-control,chap:feedback-api}. As we already concluded that backpressure is not suitable for hot sources, we will discard these from the discussion in this chapter. The solution proposed here will apply to interactive sources alone.
 
+\input{5.1-buffer-control}
+
 \clearpage
 \section*{Content}
 \begin{itemize}
 	\item[\checkmark] Distinction between hot and cold - we're only considering cold, as hot is not able to handle backpressure
-	\item Bring handling backpressure to the start of the stream
-	\item Feedback control of buffer - general overview of idea + diagram
+	\item[\checkmark] Bring handling backpressure to the start of the stream
+	\item[\checkmark] Feedback control of buffer - general overview of idea + diagram
 	\item Requestable interface
 		\begin{itemize}
 			\item request items and let them come down the stream on their own terms (i.e. in a reactive way)
