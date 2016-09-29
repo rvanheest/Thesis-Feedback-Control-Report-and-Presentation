@@ -1,0 +1,60 @@
+\chapter{Backpressure solution with feedback control}
+\label{app:backpressure-solution}
+
+\section{\code{Requestable} interface}
+\label{appsec:requestable-interface}
+\begin{lstlisting}[style=ScalaStyle, caption={Universal, interactive interface, \code{Requestable}, used in the feedback system}]
+import java.sql.ResultSet
+
+import applied_duality.reactive.{Observable, Subject}
+
+import scala.concurrent.duration.{Duration, _}
+import scala.language.postfixOps
+
+trait Requestable[T] {
+
+  protected final val subject $=$ Subject[T]()
+
+  final def results: Observable[T] $=$ subject
+
+  def request(n: Int): Unit
+}
+object Requestable {
+
+  implicit class RequestableObservable[T](val requestable: Requestable[T]) extends AnyVal {
+    def observe(timeout: Duration $=$ 1 second): Observable[T] $=$ {
+      BackpressureObservable.from(requestable, timeout)
+    }
+  }
+
+  def from[T](iterable: Iterable[T]): Requestable[T] $=$ {
+    val iterator $=$ iterable.iterator
+
+    new Requestable[T] {
+      def request(n: Int): Unit $=$ {
+        (0 until n).toStream
+          .takeWhile(_ $\Rightarrow$ iterator.hasNext)
+          .map(_ $\Rightarrow$ iterator.next())
+          .foreach(subject.onNext)
+
+        if (!iterator.hasNext)
+          subject.onCompleted()
+      }
+    }
+  }
+
+  def from[T](resultSet: ResultSet)(composer: ResultSet $\Rightarrow$ T) $=$ {
+    new Requestable[T] {
+      def request(n: Int): Unit $=$ {
+        (0 until n).toStream
+          .takeWhile(_ $\Rightarrow$ resultSet.next())
+          .map(_ $\Rightarrow$ composer(resultSet))
+          .foreach(subject.onNext)
+
+        if (!resultSet.next())
+          subject.onCompleted()
+      }
+    }
+  }
+}
+\end{lstlisting}
