@@ -24,7 +24,7 @@ Given that we will use this interface in a feedback system that controls a buffe
 
 The complete interface is called \code{Requestable[T]} and is shown in \Cref{lst:universal-interactive-interface}. It contains a single abstract method \code{request(n: Int): Unit}, which is called whenever the user of this interface wants a certain number of elements from the source. The requested elements will at some point in time be emitted by the \obs that is returned by \code{results: Observable[T]}. If no more elements are available in the source, this \obs will terminate with an \code{onCompleted} event. The implementor of \code{Requestable} is expected to use the \code{subject} to bring elements in the stream, whereas the user of the interface is expected to observe \code{results} in order to get the requested data. Note that this is a \emph{hot} stream: element emission will not be repeated as a second \obv subscribes to the stream.
 
-Example implementations of this interface for \itr and \code{ResultSet} are included in Appendix~\ref{appsec:requestable-interface}.
+Example implementations of this interface for \itr and \code{ResultSet} are included in Appendix~\ref{app:backpressure-solution}.
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Universal, interactive interface used in the feedback system}, label={lst:universal-interactive-interface}]
