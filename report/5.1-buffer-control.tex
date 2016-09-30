@@ -1,7 +1,7 @@
 \section{Controlling a buffer}
 RxJava points out on its wiki page \cite{RxJava-Wiki-Backpressure} about backpressure that it does not make the problem of overproduction in the source go away. It claims to only move ``\textit{the problem up the chain of operators to a point where it can be handled better}''. To do so, they created the \textit{reactive pull} mechanism with operators like \code{onBackpressureBuffer} and \code{onBackpressureDrop}, such that the flow control is moved up to these kinds of operators.
 
-We propose to move this flow control even further up the chain, up to the point where the source of the stream is drained in the pipeline of operators. Only there we can have maximum control over how much data is brought into the stream at a particular point in time. With this we do not have the need for infinite buffers as is the case in \code{onBackpressureBuffer}, nor do we have to drop unprocessed elements as is done with \code{onBackpressureDrop}. We propose to not wrap the cold source in the \code{Observable.create} (or any of its derived factory methods) but to wrap it in a universal, interactive interface. This way we are not dependent in our implementation on what kind of source we are dealing with. Given this interactive interface we can fill a bounded buffer with as many elements as can be processed at a particular point in time. The buffer pulls data from the source on behalf of the subscriber, which gets as much data pushed at it as it is able to handle. Pushing an element from the buffer to the downstream will automatically block the thread for another element to be pushed until the first one is fully processed.
+We propose to move this flow control even further up the chain, up to the point where the source of the stream is drained in the pipeline of operators. Only there we can have maximum control over how much data is brought into the stream at a particular point in time. With this we do not have the need for infinite buffers as is the case in \code{onBackpressureBuffer}, nor do we have to drop unprocessed elements as is done with \code{onBackpressureDrop}. We propose to not wrap the cold source in the \code{Observable.create} (or any of its derived factory methods) but to wrap it in a universal, interactive interface. This way we are not dependent in our implementation on what kind of source we are dealing with. Given this interactive interface we can fill a \textit{bounded} buffer with as many elements as can be processed at a particular point in time. The buffer pulls data from the source on behalf of the subscriber, which gets as much data pushed at it as it is able to handle. Pushing an element from the buffer to the downstream will automatically block the thread for another element to be pushed until the first one is fully processed.
 
 To control the buffer's size, we will use feedback control. This makes total sense, as we don't know how fast the downstream is going to drain the buffer. However, it does not make any sense to give a certain size to the setpoint and compare the current size with it, as some `slow' consumers might go faster or slower than expected. Bounding the buffer to a certain fixed size defeats the purpose of the feedback system in this case, as we cannot dynamically grow or shrink the size as needed. On the other hand, it is also not possible to ask ``\textit{make sure the buffer is filled to its optimal size}''. A feedback system is not able to solve this, as it does not have a particular setpoint specified.
 
@@ -39,9 +39,32 @@ trait Requestable[T] {
 \end{lstlisting}
 \end{minipage}
 
-\subsection{Implementing the feedback system}
+\subsection{The feedback system}
+Now that we are able to interact with any cold source via the \code{Requestable} interface, we can continue designing and discussing the actual feedback system that controls the size of the bounded buffer. As stated before, we do not control the \emph{actual} size of the buffer by using a setpoint of any arbitrary, fixed number of elements. Instead we observe how many elements were taken out of the buffer in relation to how many elements were in the buffer during a particular time span. With that we do in fact not control the buffer's \emph{size}, but rather control the \emph{throughput} of the buffer, while making changes to the number of elements that are requested from the source at every feedback cycle.
 
-\todo{use this equation somewhere in this subsection}
-\begin{equation}
-\tau_t = \frac{q_{t-1} - q_t + n_t}{q_{t-1} + n_t}
+The throughput in a particular time span ($\tau_t$) is defined in terms of how many elements are there to be consumed in relation to how many of these elements are actually being consumed. In a scenario where the elements that are not consumed in a certain time span are discarded or where the buffer is flushed at the end of each time span, the throughput would be equal to the ratio of how many elements were being consumed to how many elements were presented to be consumed in a certain time span. In our case, however, we do not wish to discard any elements but rather keep the left-over elements from the previous time span and make them part of what is available to be consumed in the next time span. With this we can define the throughput $\tau_t$ at time $t$ as
+
+\begin{equation}\label{eq:throughput-fraction}
+\tau_t = \frac{q_{t-1} + n_t - q_t }{q_{t-1} + n_t} \text{ \textbf{with} }q_{t-1}\text{, }q_t\text{, }n_t\text{ integers} \geq 0
 \end{equation}
+
+or
+
+\begin{equation}\label{eq:throughput-simple}
+\tau_t = 1 - \frac{q_t}{q_{t-1} + n_t} \text{ \textbf{with} }q_{t-1}\text{, }q_t\text{, }n_t\text{ integers} \geq 0
+\end{equation}
+
+In these formulas, $q_t$ is the size of the buffer at time $t$, whereas $n_t$ is the number of elements that has been put in the buffer between time $t - 1$ and $t$.
+
+\Cref{eq:throughput-simple} provides us with a sense of the range of $\tau_t$. Since $q_t \leq q_{t-1} + n_t$ (it is not possible to take out more elements than are present in the buffer) we can guarantee a lower bound for $\tau_t$ of $0.0$. Likewise, since $q_{t-1}, q_t, n_t \geq 0$, we can set an upper bound for $\tau_t$ of $1.0$. Still there is the possibility of dividing by 0, but we will guard against this in the next couple of paragraphs.
+
+\begin{equation}\label{eq:range-of-tau}
+0.0 \leq \tau_t \leq 1.0
+\end{equation}
+
+With $\tau$ as the metric for the feedback system that controls the buffer, it is not difficult to come up with an appropriate setpoint. We want the throughput to be as high as possible, which is, given \Cref{eq:range-of-tau}, $1.0$.
+
+The next point in designing this feedback loop is to determine when a new cycle starts. For this we have to observe that it will only make sense for a new cycle to start if the downstream as polled at least one element from the buffer. If in a certain time span the downstream is too busy processing one element, it does not make any sense to do a new measurement of the throughput. As new elements have been coming in based on the previous feedback cycle, but no elements have been taken out of the buffer, we do not need to request more elements. Instead, we just extend the time span by merging it with the next, until at least one element has been taken out of the buffer. Only then the feedback loop will run a new cycle.
+
+Note that using this definition of a feedback cycle is a guard against dividing by 0 in \Cref{eq:throughput-fraction,eq:throughput-simple}. This can only happen when at the start of a time span the buffer is empty and during this time span no elements are coming into the buffer. This can either be due to an unfortunate decision of the controller (which we will discuss in a later section) the request no further elements from the source, even though the buffer is empty, or because it takes some amount of time before the source can produce its next element. If the buffer was empty at the start and no elements were coming in, the downstream would at no point during this time span be able to poll an element from the buffer. Because of this, the current time span is merged with the next time span, without running through a whole new cycle and therefore also without running into dividing by 0 while calculating $\tau$.
+
