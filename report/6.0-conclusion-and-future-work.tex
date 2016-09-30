@@ -1,20 +1,28 @@
 \chapter{Conclusion and future work}
+\todo{introduction, looking back, personal notes (???)}
 
+\section{Conclusion}
 \todo{content here}
+
+\section{Future work}
+\todo{discuss the potentials of future work as listed below}
 \begin{itemize}
 	\item Backpressure
 	\begin{itemize}
-		\item Push solution – control number of workers with certain metrics. This will presumably also work with hot streams such as UI events and time
+		\item Push solution - control number of workers with certain metrics. This will presumably also work with hot streams such as UI events and time
 		\begin{itemize}
 			\item Queue length
 			\item Net queue length change
 			\item In/out ratio per time unit
 		\end{itemize}
+		\item Using RxJava2.x, you can apparently define a `backpressure policy' on the new \code{Flowable} type
+		
 	\end{itemize}
 	\item Feedback control
 	\begin{itemize}
 		\item It’s basically an algorithm to solve ‘control problems’. How is the problem class defined where feedback control can be used as an easy solution?
 		\item It’s difficult to tune PID controllers. (refer to blog) Would it be possible to use ML for this process?
-		\item The PID controller originally comes from the field of physics and mechanical/electrical engineering and is considered to be the default controller, given its (mathematical) simplicity and quick response to change. Does this still hold for computer science, since we don’t need/use mathematical models? Or is there an alternative, easier to tune, controller that could be considered as default in computer science?
+		\item The PID controller originally comes from the field of physics and mechanical/electrical engineering and is considered to be the default controller, given its (mathematical) simplicity and quick response to change. Does this still hold for computer science, since we don’t need/use mathematical models? Or is there an alternative, easier to tune, controller that could be considered as default in computer science? (also take into account that the PID controller makes the assumption of a \textit{continuous} world, whereas computer science presumes a \textit{discrete} world)
+		\item We derived a feedback API based on a transformation of $\obs \Rightarrow \obs$. Would it be possible to also do make a similar API by just adding the feedback operator to the \obs API? This would allow for some form of recursion within the stream, allowing for a whole new class of problems to be solved using reactive programming.
 	\end{itemize}
 \end{itemize}
