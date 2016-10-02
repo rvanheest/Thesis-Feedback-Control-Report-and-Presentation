@@ -102,7 +102,17 @@ The rest of the code, the queue polling behavior, initialization of various valu
 
 \subsection{Designing the controller}
 \label{subsec:controller-design}
+The final piece of this feedback control system is the controller, who's job it is to transform the difference between the setpoint and the throughput into a new number of elements to be requested from the source. However, before introduce the controller used in this control system, we first have to observe a number of issues.
 
+We first have to consider the range of error values that is possible within this system. Since we have established that $\tau_t$ must be a value between 0.0 and 1.0 (\Cref{eq:range-of-tau}), and since we have set the setpoint to a value of 1.0, we must conclude that the range of values for the error must be between 0.0 and 1.0 as well (following \Cref{eq:tracking-error}). 
+
+Although this bound may seem to be a good thing, it actually has some interesting implications on the controller of our choice. Janert observes in chapter 15 of his book \cite{janert2013-feedback} regarding this kind of bounds that they are not symmetric around the setpoint and that it is not even possible to have a negative error. For a standard PID controller to work well, it should preferably have a range of errors that is symmetric around the setpoint.
+
+Janert suggests to solve this problem by not fixing the setpoint at 1.0 but put it ever so slightly below 1.0. With setpoints like 0.999 or 0.9995, he argues, we will do just as good, as the outcome of the controller will be an integer value rather than a floating point number. We are only able to add or subtract an entire element from the number to be requested. This however causes an unusual asymmetry in the tracking error. Although it can become negative, the error can become much more positive. Using a setpoint of 0.999, the tracking error on the negative side can be at most $0.999 - 1.0 = -0.001$. On the positive side, however, the tracking error can be at most 0.999, which is more than two orders of magnitude larger! As a control action originating from a PID controller is proportional to error, it becomes clear that control actions that tend to increase the number of requested elements will be more than two orders of magnitude stronger than control actions that tend to decrease the number of requested elements. Janert therefore concludes that this is not at all desirable and moves on to a completely new type of controller.
+
+The problem that is discussed in chapter 15 of Janert's book is fairly similar to the situation at hand and so we will create a slightly modified version of his controller. We will keep the setpoint at 1.0, as stated in the previous section. Notice that with this the tracking error can never be negative. Also note that whenever $\tau_t = 1.0$, the tracking error will become zero. This can be interpreted as a signal from the downstream that it was completely able to keep up with the number of elements that were available in the buffer. Most likely this means that the number of requested elements was not high enough for the downstream to be kept busy all the time. We will therefore increase the number of requested elements by 1 whenever this happens.
+
+A tracking error less than 1, on the other hand, signals that the downstream was not able to keep up with the total number of elements that were already present in the buffer and the number of elements that were added to the buffer in the previous cycle. 
 
 
 
