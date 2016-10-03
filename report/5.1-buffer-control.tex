@@ -8,11 +8,17 @@ To control the buffer's size, we will use feedback control. This makes total sen
 
 Instead of controlling the buffer size directly, we choose to measure the ratio between what goes out the buffer and what comes in the buffer. We will refer to this ratio as the system's throughput. In an optimal situation the amount of data that comes in is just as much as comes out of the system, so ideally this ratio must be $1.0$, which will be the setpoint of this system. Given the error that comes from the difference between the setpoint and the actual throughput, we can then determine how many elements to request from the source in the next iteration. The controller that does this will be discussed in a later section.
 
-The full feedback system is depicted in \todo{refer to diagram}. Here it is also clearly visible that the source itself is \emph{not} part of the feedback system, but is \emph{used} by the system to retrieve a certain number of elements from. Also note that the \textit{downstream handler} is not part of feedback system. Even though it \emph{interacts} with the buffer, it is an external force that influences the behavior of the system. Ultimately the \textit{downstream handler} is the part that exposes an \obs for an \obv to listen to.
+The full feedback system is depicted in \Cref{fig:backpressure-feedback-system}. Here it is also clearly visible that the source itself is \emph{not} part of the feedback system, but is \emph{used} by the system to retrieve a certain number of elements from. Also note that the \textit{downstream handler} is not part of feedback system. Even though it \emph{interacts} with the buffer, it is an external force that influences the behavior of the system. Ultimately the \textit{downstream handler} is the part that exposes an \obs for an \obv to listen to.
 
 \todo{aankondiging: ``in de rest van deze section bespreken we de verschillende facetten van het feedback systeem''}
 
-\todo{diagram of this feedback system}
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[width=0.8\textwidth]{figures/Backpressure-feedback-system.png}
+	\end{center}
+	\caption{Feedback system for controlling overproduction}
+	\label{fig:backpressure-feedback-system}
+\end{figure}
 
 \subsection{A universal, interactive interface}
 As mentioned above, we propose to not wrap the (cold) source directly in \code{Observable.create}, but instead wrap it in a universal, interactive interface. This is necessary since there are many variants of interactive interfaces that all do the same, but each one in a slightly different way.
