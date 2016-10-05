@@ -10,8 +10,6 @@ Instead of controlling the buffer size directly, we choose to measure the ratio 
 
 The full feedback system is depicted in \Cref{fig:backpressure-feedback-system}. Here it is also clearly visible that the source itself is \emph{not} part of the feedback system, but is \emph{used} by the system to retrieve a certain number of elements from. Also note that the \textit{downstream handler} is not part of feedback system. Even though it \emph{interacts} with the buffer, it is an external force that influences the behavior of the system. Ultimately the \textit{downstream handler} is the part that exposes an \obs for an \obv to listen to.
 
-\todo{aankondiging: ``in de rest van deze section bespreken we de verschillende facetten van het feedback systeem''}
-
 \begin{figure}[H]
 	\begin{center}
 		\includegraphics[width=0.8\textwidth]{figures/Backpressure-feedback-system.png}
@@ -19,6 +17,8 @@ The full feedback system is depicted in \Cref{fig:backpressure-feedback-system}.
 	\caption{Feedback system for controlling overproduction}
 	\label{fig:backpressure-feedback-system}
 \end{figure}
+
+In the rest of this section we will go into the details of this feedback system and discuss both the theoretical background and implementations.
 
 \subsection{A universal, interactive interface}
 As mentioned above, we propose to not wrap the (cold) source directly in \code{Observable.create}, but instead wrap it in a universal, interactive interface. This is necessary since there are many variants of interactive interfaces that all do the same, but each one in a slightly different way.
@@ -106,7 +106,7 @@ controller
 
 The rest of the code, the queue polling behavior, initialization of various values and the wrapping of the whole mechanic in an \code{Observable.apply}, are considered trivial. This can be found in \Cref{app:backpressure-solution}.
 
-\subsection{Designing the controller}
+\subsection{A special controller}
 \label{subsec:controller-design}
 The final piece of this feedback control system is the controller, who's job it is to transform the difference between the setpoint and the throughput into a new number of elements to be requested from the source. However, before introduce the controller used in this control system, we first have to observe a number of issues.
 
@@ -121,8 +121,29 @@ The problem that is discussed in chapter 15 of Janert's book is fairly similar t
 A tracking error greater than zero, on the other hand, signals that the downstream was not able to keep up with the total number of elements that were already present in the buffer and those that were added to the buffer in the previous cycle. This can either mean that the downstream is \emph{incidentally} too busy to pull all elements out or that it can \emph{structurally} not handle the number of elements it is faced with. We will take an optimistic approach here and first assume that this is just an incidental occasion of less elements being consumed. Therefore we change nothing to the number of elements to be requested. We will however keep track of how many times in a row this situation of the tracking error being greater than zero occurs. Only if it happens a certain number of times in a row, we will \textit{decrement} the number of requested elements by 1. From that point on, we will monitor even closer and decrement once again (with briefer periods in between) if the throughput remains less than 1.0. If, however, the throughput comes back to 1.0, we consider it to be a satisfying number of elements, stop decrementing and start increasing the number of requested elements again.
 
 \subsubsection*{Implementation}
+As the attentive reader may already have noticed, this is an incremental controller: it does not state how many elements should be requested next, but rather return by how many the number of elements to be requested should be increased or decreased. The actual number is calculated by an extra component added right after the controller, which does the integration over all historical $\Delta n$'s.
 
+The controller itself is basically a stateful class with a transformation method to construct the next state. Furthermore we have an initial state defined on this class to get everything started. Using the API defined in the previous chapter, we can wrap this state into a \code{Component} using RxMobile's \code{Observable.scanLeft} operator. After the newest $\Delta n$ is extracted from this state, we use a \code{Component.scanLeft} to compute the actual $n$. In this step we also prevent the requested number of elements to go negative.
 
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={Controller implementation for controlling the buffer}, label={lst:buffer-controller}]
+class Controller(time: Int, val change: Int) {
+  def handle(error: Double): Controller $=$ {
+    if (error $==$ 0.0) new Controller(period1, 1) // throughput was 1.0
+    else if (time $==$ 1) new Controller(period2, -1)
+    else new Controller(time - 1, 0)
+  }
+}
+object Controller {
+  def initial $=$ new Controller(period1, 0)
+}
+
+val controller $=$ Component[Double, Controller](_.scanLeft(Controller.initial)(_ handle _))
+  .drop(1)
+  .map(_.change)
+  .scanLeft(initialRequest)((sum, d) $\Rightarrow$ scala.math.max(0, sum + d))
+\end{lstlisting}
+\end{minipage}
 
 
 

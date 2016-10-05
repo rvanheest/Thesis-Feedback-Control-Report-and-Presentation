@@ -94,10 +94,10 @@ object BackpressureObservable {
         def initial $=$ new Controller(period1, 0)
       }
 
-      val controller $=$ Component[Double, Int](_.scanLeft(Controller.initial)(_ handle _)
+      val controller $=$ Component[Double, Controller](_.scanLeft(Controller.initial)(_ handle _))
         .drop(1)
         .map(_.change)
-        .scanLeft(initialRequest)((sum, d) $\Rightarrow$ scala.math.max(0, sum + d)))
+        .scanLeft(initialRequest)((sum, d) $\Rightarrow$ scala.math.max(0, sum + d))
 
       val feedbackSubscription $=$ controller
         // source:
