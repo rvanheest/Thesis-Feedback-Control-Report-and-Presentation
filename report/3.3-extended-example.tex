@@ -63,7 +63,7 @@ implicit class Tuple2Math[X: Numeric, Y: Numeric](val src: (X, Y)) {
 }
 
 case class Ball(acc: Acceleration, vel: Velocity, pos: Position) {
-  def accelerate(nAcc: Acceleration) $=$ Ball(nAcc, vel + nAcc, pos + vel + nAcc) |\label{line:accelerate}|
+  def accelerate(newAcc: Acceleration) $=$ Ball(newAcc, vel + newAcc, pos + vel + newAcc) |\label{line:accelerate}|
 }
 object Ball {
   def apply(radius: Double) $=$ Ball((0.0, 0.0), (0.0, 0.0), (radius, radius))
@@ -112,8 +112,8 @@ def pid: Acceleration $=$ { |\label{line:pid-function}|
 }
 
 def update(implicit gc: GraphicsContext): Unit $=$ { |\label{line:update}|
-  val acceleration $=$ pid map (a $\Rightarrow$ math.max(math.min(a, 0.2), -0.2))
-  ball $=$ ball accelerate acceleration
+  val acceleration $=$ pid.map(a $\Rightarrow$ math.max(math.min(a, 0.2), -0.2))
+  ball $=$ ball.accelerate(acceleration)
 
   // managing the history
   // ...

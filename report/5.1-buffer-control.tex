@@ -128,11 +128,10 @@ The controller itself is basically a stateful class with a transformation method
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Controller implementation for controlling the buffer}, label={lst:buffer-controller}]
 class Controller(time: Int, val change: Int) {
-  def handle(error: Double): Controller $=$ {
+  def handle(error: Double): Controller $=$
     if (error $==$ 0.0) new Controller(period1, 1) // throughput was 1.0
     else if (time $==$ 1) new Controller(period2, -1)
     else new Controller(time - 1, 0)
-  }
 }
 object Controller {
   def initial $=$ new Controller(period1, 0)

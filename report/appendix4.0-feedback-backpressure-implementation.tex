@@ -20,9 +20,8 @@ trait Requestable[T] {
 object Requestable {
 
   implicit class RequestableObservable[T](val requestable: Requestable[T]) extends AnyVal {
-    def observe(timeout: Duration $=$ 1 second): Observable[T] $=$ {
+    def observe(timeout: Duration $=$ 1 second): Observable[T] $=$
       BackpressureObservable.from(requestable, timeout)
-    }
   }
 
   def from[T](iterable: Iterable[T]): Requestable[T] $=$ {
@@ -41,7 +40,7 @@ object Requestable {
     }
   }
 
-  def from[T](resultSet: ResultSet)(composer: ResultSet $\Rightarrow$ T) $=$ {
+  def from[T](resultSet: ResultSet)(composer: ResultSet $\Rightarrow$ T) $=$
     new Requestable[T] {
       def request(n: Int): Unit $=$ {
         (0 until n).toStream
@@ -53,7 +52,6 @@ object Requestable {
           subject.onCompleted()
       }
     }
-  }
 }
 \end{lstlisting}
 
@@ -69,7 +67,7 @@ import scala.language.postfixOps
 
 object BackpressureObservable {
 
-  def from[T](source: Requestable[T], intervalDuration: Duration $=$ 1 second): Observable[T] $=$ {
+  def from[T](source: Requestable[T], intervalDuration: Duration $=$ 1 second): Observable[T] $=$
     Observable.create[T](subscriber $\Rightarrow$ {
 
       val (period1, period2) $=$ (2, 1)
@@ -139,6 +137,5 @@ object BackpressureObservable {
         case e: Throwable $\Rightarrow$ subscriber.onError(e)
       }
     })
-  }
 }
 \end{lstlisting}

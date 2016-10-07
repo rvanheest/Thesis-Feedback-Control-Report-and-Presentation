@@ -18,14 +18,13 @@ Finally, we can now combine these three controllers into the PI and PID controll
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Implementation of the various commonly used controllers}, label={lst:controller-implementations}]
 object Controllers {
-  def integralController[T](ki: T)(implicit n: Numeric[T]): Component[T, T] $=$ {
+  def integralController[T](ki: T)(implicit n: Numeric[T]): Component[T, T] $=$
     Component.identity[T]
       .scan(n.zero)(n.plus)
       .drop(1)
       .map(n.times(ki, _))
-  }
 
-  def derivativeController[T](kd: T)(implicit n: Numeric[T]): Component[T, T] $=$ {
+  def derivativeController[T](kd: T)(implicit n: Numeric[T]): Component[T, T] $=$
     Component.identity[T]
       .startWith(n.zero)
       .liftRx(_.buffer(2, 1))
@@ -34,11 +33,9 @@ object Controllers {
         case fst :: snd :: Nil $\Rightarrow$ n.minus(snd, fst)
       }
       .map(n.times(kd, _))
-  }
   
-  def piController[T](kp: T, ki: T)(implicit n: Numeric[T]): Component[T, T] $=$ {
+  def piController[T](kp: T, ki: T)(implicit n: Numeric[T]): Component[T, T] $=$
     Component.create(kp *).combine(integralController(ki))(n.plus)
-  }
   
   def pidController[T](kp: T, ki: T, kd: T)(implicit Numeric[T]): Component[T, T] $=$ {
     import n._
@@ -74,9 +71,8 @@ case class AccVel(acceleration: Acc $=$ 0.0, velocity: Vel $=$ 0.0) {
 }
 
 case class Ball1D(acceleration: Acc, velocity: Vel, position: Pos) {
-  def move(av: AccVel): Ball1D $=$ {
+  def move(av: AccVel): Ball1D $=$
     Ball1D(av.acceleration, av.velocity, position + av.velocity)
-  }
 }
 object Ball1D {
   def apply(position: Pos): Ball1D $=$ Ball1D(0.0, 0.0, position)
@@ -84,9 +80,8 @@ object Ball1D {
 
 case class Ball2D(acceleration: Acceleration, velocity: Velocity, position: Position)
 object Ball2D {
-  def apply(x: Ball1D, y: Ball1D): Ball2D $=$ {
+  def apply(x: Ball1D, y: Ball1D): Ball2D $=$
     Ball2D((x.acceleration, y.acceleration), (x.velocity, y.velocity), (x.position, y.position))
-  }
 }
 \end{lstlisting}
 \end{minipage}
@@ -104,13 +99,12 @@ val (kp, ki, kd) $=$ (3.0, 0.0001, 80.0)
 val pidX $=$ Controllers.pidController(kp, ki, kd)
 val pidY $=$ Controllers.pidController(kp, ki, kd)
 
-def feedbackSystem(pid: Component[Double, Acc]): BallFeedbackSystem $=$ {
+def feedbackSystem(pid: Component[Double, Acc]): BallFeedbackSystem $=$
   pid.map(d $\Rightarrow$ math.max(math.min(d * 0.001, 0.2), -0.2))
     .scan(new AccVel)(_ accelerate _).drop(1)
     .scan(Ball1D(ballRadius))(_ move _)
     .sample(16 milliseconds)
     .feedback(_.position)
-}
 
 def feedback: Component[Position, Ball2D] $=$ {
   val fbcX $=$ Component.create[Position, Pos](_._1) >>> feedbackSystem(pidX)
