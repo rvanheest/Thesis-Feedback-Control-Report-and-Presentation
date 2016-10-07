@@ -7,7 +7,7 @@ We also discussed several solutions to overproduction in the light of these thre
 
 The central problem here is that we want a single reactive interface to share between all kinds of data streams. Although one might argue that you ought not to be using a reactive interface for an interactive (cold) source, we acknowledge the fact that in many circumstances it is more practical to view and treat them as `streaming' and `real-time' data rather than having them as interactive sources. In order to do so, we need a way to interact with cold sources in an overproduction-safe way. Reactive Streams and reactive pull achieve this by introducing the concept of backpressure and changing the reactive interface itself, making the consumer in charge, rather than the producer. Not only is this against the concept of reactiveness, it also gives many problems with implementing the operators defined on the reactive interface.
 
-In this chapter we will propose an alternative to backpressure that makes use of the feedback systems described in \Cref{chap:intro-to-feedback-control,chap:feedback-api}. As we already concluded that backpressure is not suitable for hot sources, we will discard these from the discussion in this chapter. The solution proposed here will apply to interactive sources alone.
+In this chapter we will propose an alternative to backpressure that makes use of the feedback systems described in \Cref{chap:intro-to-feedback-control,chap:feedback-api}. We already concluded that backpressure is not suitable for hot sources, so we will discard these from the discussion in this chapter. The solution proposed here will apply to interactive sources alone.
 
 \input{5.1-buffer-control}
 
@@ -28,14 +28,14 @@ In this chapter we will propose an alternative to backpressure that makes use of
 			\item[\checkmark] feedback system fills the buffer
 			\item[\checkmark] reactively pull data from the buffer and send it downstream (exposed as Observable)
 		\end{itemize}
-	\item Controller
+	\item[\checkmark] Controller
 		\begin{itemize}
-			\item PID control, why it doesn't work here
-			\item relation with Janert
-			\item incremental controller
-			\item can we create a chart of the performance of the PID vs incremental controller, similar to Janert?
+			\item[\checkmark] PID control, why it doesn't work here
+			\item[\checkmark] relation with Janert
+			\item[\checkmark] incremental controller
+			\item[$\times$] can we create a chart of the performance of the PID vs incremental controller, similar to Janert?
 		\end{itemize}
-	\item Wrapping in an API
+	\item[\checkmark] Wrapping in an API
 	\item How it works in practice
 		\begin{itemize}
 			\item backpressure examples, but then with the feedback solution
