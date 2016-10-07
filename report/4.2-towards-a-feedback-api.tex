@@ -59,8 +59,7 @@ As an example of a component that inherits this interface, we will show an imple
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Implementation of \code{RunningAverage} using the \textit{Immutable Component} interface}, label={lst:immutable-runningaverage}]
-class RunningAverage(n: Int, queue: Queue[Double])
-      extends Component[Double, Double] {
+class RunningAverage(n: Int, queue: Queue[Double]) extends Component[Double, Double] {
 
   def update(u: Double): RunningAverage $=$ {
     if (queue.length $==$ n) queue.dequeue
@@ -225,7 +224,7 @@ Having set up the \comp interface in this way, comes with an extra benefit. By u
 \begin{lstlisting}[style=ScalaStyle, caption={Implementation of \code{RunningAverage} using the \comp interface}, label={lst:running-average-final}]
 class RunningAverage(n: Int) extends Component[Double, Double] {
 
-  def transform(input: Observable[Double]): Observable[Double] $=$ {
+  def transform(input: Observable[Double]): Observable[Double] $=$
     input.scanLeft(new Queue[Double]) { case (queue, value) $\Rightarrow$ 
         if (queue.length $==$ n)
           queue.dequeue()
@@ -233,7 +232,6 @@ class RunningAverage(n: Int) extends Component[Double, Double] {
       }
       .drop(1)
       .map(queue $\Rightarrow$ queue.sum / queue.size)
-  }
 }
 \end{lstlisting}
 \end{minipage}
@@ -259,11 +257,10 @@ Finally, we add a function \code{from}, which ignores the input stream and only 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Various ways to create a \comp}, label={lst:creating-component}]
 object Component {
-  def apply[I, O](factory: Observable[I] $\Rightarrow$ Observable[O]) $=$ {
+  def apply[I, O](factory: Observable[I] $\Rightarrow$ Observable[O]) $=$
     new Component[I, O] {
       def transform(input: Observable[I]) $=$ factory(input)
     }
-  }
 
   def create[I, O](func: I $\Rightarrow$ O) $=$ Component[I, O](_.map(func))
   
@@ -328,7 +325,7 @@ We can then use \code{lift} in \code{concat} as follows:
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Revised implementation of the \code{concat} operator}, label={lst:concat-revised}]
 implicit class Operators[I, O](val src: Component[I, O]) {
-  def concat[Y](other: Component[O, Y]): Component[I, Y] $=$ {
+  def concat[Y](other: Component[O, Y]): Component[I, Y] $=$
     src.lift((input, output) $\Rightarrow$ {
       other.asObservable.subscribe(output)
       src.asObservable.subscribe(other)
@@ -337,7 +334,6 @@ implicit class Operators[I, O](val src: Component[I, O]) {
       output $+=$ other
       other $+=$ src
     })
-  }
 }
 \end{lstlisting}
 \end{minipage}
@@ -422,7 +418,7 @@ Implementing these two operators for \comp requires us to split the `\textit{inp
 implicit class Operators[I, O](val src: Component[I, O]) {
   $\ldots$
 
-  def first[Y]: Component[(I, Y), (O, Y)] $=$ {
+  def first[Y]: Component[(I, Y), (O, Y)] $=$
     src.lift((input, downstream) $\Rightarrow$ {
       val srcOut $=$ src.asObservable
       val inputOut $=$ input.map(_._2)
@@ -432,11 +428,9 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 
       downstream $+=$ src
     })
-  }
 
-  def second[Y]: Component[(Y, I), (Y, O)] $=$ {
+  def second[Y]: Component[(Y, I), (Y, O)] $=$
     Component.create[(Y, I), (I, Y)](_.swap) >>> src.first >>> Component.create(_.swap)
-  }
 }
 \end{lstlisting}
 \end{minipage}
@@ -448,13 +442,11 @@ The other two operators that Hughes defines for the \textit{Arrow} type class ar
 implicit class Operators[I, O](val src: Component[I, O]) {
   $\ldots$
 
-  def ***[X, Y](other: Component[X, Y]): Component[(I, X), (O, Y)] $=$ {
+  def ***[X, Y](other: Component[X, Y]): Component[(I, X), (O, Y)] $=$
     src.first[X] >>> other.second[O]
-  }
 
-  def &&&[Y](other: Component[I, Y]): Component[I, (O, Y)] $=$ {
+  def &&&[Y](other: Component[I, Y]): Component[I, (O, Y)] $=$
     Component.create[I, (I, I)](b $\Rightarrow$ (b, b)) >>> (src *** other)
-  }
 }
 \end{lstlisting}
 \end{minipage}
@@ -473,9 +465,8 @@ Hughes finishes this trail by generalizing the \code{add} to a \code{liftA2}, wh
 implicit class Operators[I, O](val src: Component[I, O]) {
   $\ldots$
 
-  def combine[X, Y](other: Component[I, X])(combiner: (O, X) $\Rightarrow$ Y): Component[I, Y] $=$ {
-    (src &&& other) >>> Component.create(combiner.tupled)
-  }
+  def combine[X, Y](other: Component[I, X])(comb: (O, X) $\Rightarrow$ Y): Component[I, Y] $=$
+    (src &&& other) >>> Component.create(comb.tupled)
 }
 \end{lstlisting}
 \end{minipage}
@@ -496,15 +487,11 @@ The other operators, \code{(\&\&\&)} and \code{combine} do not require any modif
 implicit class Operators[I, O](val src: Component[I, O]) {
   $\ldots$
 
-  def first[Y]: Component[(I, Y), (O, Y)] $=$ {
-    src *** Component.identity[Y]
-  }
+  def first[Y]: Component[(I, Y), (O, Y)] $=$ src *** Component.identity[Y]
 
-  def second[Y]: Component[(Y, I), (Y, O)] $=$ {
-    Component.identity[Y] *** src
-  }
+  def second[Y]: Component[(Y, I), (Y, O)] $=$ Component.identity[Y] *** src
 
-  def ***[X, Y](other: Component[X, Y]): Component[(I, X), (O, Y)] $=$ {
+  def ***[X, Y](other: Component[X, Y]): Component[(I, X), (O, Y)] $=$
     src.lift((input, downstream) $\Rightarrow$ {
       input.map(_._1).subscribe(src)
       input.map(_._2).subscribe(other)
@@ -514,15 +501,12 @@ implicit class Operators[I, O](val src: Component[I, O]) {
       downstream $+=$ src
       downstream $+=$ other
     })
-  }
 
-  def &&&[Y](other: Component[I, Y]): Component[I, (O, Y)] $=$ {
+  def &&&[Y](other: Component[I, Y]): Component[I, (O, Y)] $=$
     Component.create[I, (I, I)](b $\Rightarrow$ (b, b)) >>> (src *** other)
-  }
 
-  def combine[X, Y](other: Component[I, X])(combiner: (O, X) $\Rightarrow$ Y): Component[I, Y] $=$ {
-    (src &&& other) >>> Component.create(combiner.tupled)
-  }
+  def combine[X, Y](other: Component[I, X])(comb: (O, X) $\Rightarrow$ Y): Component[I, Y] $=$
+    (src &&& other) >>> Component.create(comb.tupled)
 }
 \end{lstlisting}
 \end{minipage}
@@ -585,9 +569,8 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 
   def map[X](f: O $\Rightarrow$ X): Component[I, X] $=$ src >>> Component.create(f)
   
-  def <*>[X, Y](other: Component[I, X])(implicit ev: O $<:<$ (X $\Rightarrow$ Y)): Component[I, Y] $=$ {
+  def <*>[X, Y](other: Component[I, X])(implicit ev: O $<:<$ (X $\Rightarrow$ Y)): Component[I,Y] $=$
     src.combine(other)(ev(_)(_))
-  }
 }
 \end{lstlisting}
 \end{minipage}
@@ -640,7 +623,7 @@ Given these new operators, we can reimplement the \code{RunningAverage} example 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Implementation of \code{RunningAverage} using the new Rx style operators}, label={lst:running-average-with-operators}]
 implicit class RunningAverageOperator(val src: Component[Double, Double]) {
-  def runningAverage: Component[Double, Double] $=$ {
+  def runningAverage: Component[Double, Double] $=$
     src.scan(new Queue[Double]) { case (queue, value) $\Rightarrow$
         if (queue.length $==$ n)
           queue.dequeue()
@@ -648,7 +631,6 @@ implicit class RunningAverageOperator(val src: Component[Double, Double]) {
       }
       .drop(1)
       .map(queue $\Rightarrow$ queue.sum / queue.size)
-  }
 }
 \end{lstlisting}
 \end{minipage}
@@ -677,11 +659,10 @@ With the \code{loop} function in place, we can implement the \code{feedback} ope
 implicit class Operators[I, O](val src: Component[I, O]) {
   $\ldots$
 
-  def feedback(f: O $\Rightarrow$ I)(implicit n: Numeric[I]): Component[I, O] $=$ {
+  def feedback(f: O $\Rightarrow$ I)(implicit n: Numeric[I]): Component[I, O] $=$
     feedback(Component.create(f))
-  }
 
-  def feedback(tr: Component[O, I])(implicit n: Numeric[I]): Component[I, O] $=$ { |\label{line:feedback-operator}|
+  def feedback(tr: Component[O, I])(implicit n: Numeric[I]): Component[I, O] $=$ |\label{line:feedback-operator}|
     lift((setpoint, downstream) $\Rightarrow$ {
       loop(tr.asObservable, setpoint)((t, s) $\Rightarrow$ n.minus(s, t))
         .observeOn(new TrampolineScheduler) |\label{line:observe-on-trampoline}|
@@ -699,10 +680,9 @@ implicit class Operators[I, O](val src: Component[I, O]) {
       downstream $+=$ tr
       tr $+=$ src
     })
-  }
   
-  private def loop[T, S](transOut: Observable[T], setpoint: Observable[S]) (combinator: (T, S) $\Rightarrow$ I): Observable[I] $=$ { |\label{line:feedback-loop}|
-    transOut.publish(tos $\Rightarrow$ setpoint.publish(sps $\Rightarrow$
+  private def loop[T, S](transducerOut: Observable[T], setpoint: Observable[S]) (combinator: (T, S) $\Rightarrow$ I): Observable[I] $=$ |\label{line:feedback-loop}|
+    transducerOut.publish(tos $\Rightarrow$ setpoint.publish(sps $\Rightarrow$
       tos.combineLatest(sps)((_, _))
         .take(1)
         .flatMap { case (t, s) $\Rightarrow$
@@ -711,7 +691,6 @@ implicit class Operators[I, O](val src: Component[I, O]) {
             observer.onNext(combinator(t, s))
           })
         }))
-  }
 }
 \end{lstlisting}
 \end{minipage}

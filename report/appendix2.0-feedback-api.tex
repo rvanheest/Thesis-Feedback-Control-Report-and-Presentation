@@ -9,9 +9,8 @@ class Component[I, O](transform: Observable[I] $\Rightarrow$ Observable[O]) {
 }
 
 object Component {
-  def apply[I, O](transform: Observable[I] $\Rightarrow$ Observable[O]): Component[I, O] $=$ {
+  def apply[I, O](transform: Observable[I] $\Rightarrow$ Observable[O]): Component[I, O] $=$
     new Component(transform)
-  }
 
   def create[I, O](f: I $\Rightarrow$ O): Component[I, O] $=$ Component(_ map f)
 
@@ -30,53 +29,40 @@ package object component {
   implicit class ArrowOperators[I, O](val src: Component[I, O]) {
     def >>>[X](other: Component[O, X]): Component[I, X] $=$ this concat other
 
-    def concat[X](other: Component[O, X]): Component[I, X] $=$ {
+    def concat[X](other: Component[O, X]): Component[I, X] $=$
       Component(other.run _ compose src.run)
-    }
 
-    def first[X]: Component[(I, X), (O, X)] $=$ {
-      	this *** Component.identity[X]
-    }
+    def first[X]: Component[(I, X), (O, X)] $=$ this *** Component.identity[X]
 
-    def second[X]: Component[(X, I), (X, O)] $=$ {
-      Component.identity[X] *** src
-    }
+    def second[X]: Component[(X, I), (X, O)] $=$ Component.identity[X] *** src
 
-    def ***[X, Y](other: Component[X, Y]): Component[(I, X), (O, Y)] $=$ {
+    def ***[X, Y](other: Component[X, Y]): Component[(I, X), (O, Y)] $=$
       Component(_.publish(ixs $\Rightarrow$ {
         src.run(ixs.map(_._1)).zipWithBuffer(other.run(ixs.map(_._2)))((_, _))
       }))
-    }
 
-    def &&&[X](other: Component[I, X]): Component[I, (O, X)] $=$ {
+    def &&&[X](other: Component[I, X]): Component[I, (O, X)] $=$
       Component.create[I, (I, I)](a $\Rightarrow$ (a, a)) >>> (src *** other)
-    }
 
-    def combine[X, Y](other: Component[I, X])(f: (O, X) $\Rightarrow$ Y): Component[I, Y] $=$ {
+    def combine[X, Y](other: Component[I, X])(f: (O, X) $\Rightarrow$ Y): Component[I, Y] $=$
       (src &&& other) >>> Component.create(f.tupled)
-    }
   }
   
+
   implicit class ApplicativeOperators[I, O](val src: Component[I, O]) {
-    def map[X](f: O $\Rightarrow$ X): Component[I, X] $=$ {
-      src >>> Component.create(f)
-    }
+    def map[X](f: O $\Rightarrow$ X): Component[I, X] $=$ src >>> Component.create(f)
 
-    def <*>[X, Y](other: Component[I, X])(implicit ev: O $<:<$ (X $\Rightarrow$ Y)): Component[I, Y] $=$ {
+    def <*>[X, Y](other: Component[I, X])(implicit ev: O $<:<$ (X$\Rightarrow$Y)): Component[I,Y] $=$
       src.combine(other)(ev(_)(_))
-    }
 
-    def *>[X](other: Component[I, X]): Component[I, X] $=$ {
+    def *>[X](other: Component[I, X]): Component[I, X] $=$
       src.map[X $\Rightarrow$ X](_ $\Rightarrow$ identity) <*> other
-    }
 
-    def <*[X](other: Component[I, X]): Component[I, O] $=$ {
+    def <*[X](other: Component[I, X]): Component[I, O] $=$
       src.map[X $\Rightarrow$ O](o $\Rightarrow$ _ $\Rightarrow$ o) <*> other
-    }
 
-    def <**>[X](other: Component[I, O $\Rightarrow$ X]): Component[I, X] $=$ {
+    def <**>[X](other: Component[I, O $\Rightarrow$ X]): Component[I, X] $=$
       other <*> src
-    }
   }
   
   implicit class RxOperators[I, O](val src: Component[I, O]) {
@@ -108,8 +94,8 @@ package object component {
   }
   
   implicit class FeedbackOperators[I, O](val src: Component[I, O]) {
-    private def loop[T, S](transOut: Observable[T], setpoint: Observable[S]) (combinator: (T, S) $\Rightarrow$ I): Observable[I] $=$ {
-      transOut.publish(tos $\Rightarrow$ setpoint.publish(sps $\Rightarrow$
+    private def loop[T, S](transducerOut: Observable[T], setpoint: Observable[S]) (combinator: (T, S) $\Rightarrow$ I): Observable[I] $=$
+      transducerOut.publish(tos $\Rightarrow$ setpoint.publish(sps $\Rightarrow$
         tos.combineLatest(sps)((_, _))
           .take(1)
           .flatMap { case (t, s) $\Rightarrow$
@@ -118,21 +104,17 @@ package object component {
               observer.onNext(combinator(t, s))
             })
           }))
-    }
 
-    def feedback(trFunc: O $\Rightarrow$ I)(implicit n: Numeric[I]): Component[I, O] $=$ {
+    def feedback(trFunc: O $\Rightarrow$ I)(implicit n: Numeric[I]): Component[I, O] $=$
       feedback(Component.create(trFunc))
-    }
 
-    def feedback(tr: Component[O,I])(implicit n: Numeric[I]): Component[I, O] $=$ {
+    def feedback(tr: Component[O,I])(implicit n: Numeric[I]): Component[I, O] $=$
       feedbackWith(tr)((t, s) $\Rightarrow$ n.minus(s, t))
-    }
 
-    def feedbackWith[T, S](transducerFunc: O $\Rightarrow$ T)                         (combinatorFunc: (T, S) $\Rightarrow$ I): Component[S, O] $=$ {
+    def feedbackWith[T, S](transducerFunc: O $\Rightarrow$ T)(combinatorFunc: (T, S) $\Rightarrow$ I): Component[S, O] $=$
       feedbackWith(Component.create(trFunc))(combFunc)
-    }
 
-    def feedbackWith[T, S](transducer: Component[O, T])                  (combinatorFunc: (T, S) $\Rightarrow$ I): Component[S, O] $=$ {
+    def feedbackWith[T, S](transducer: Component[O, T])(combinatorFunc: (T, S) $\Rightarrow$ I): Component[S, O] $=$
       Component(setpoint $\Rightarrow$ {
         val srcIn $=$ Subject[I]()
 
@@ -145,7 +127,6 @@ package object component {
             out
           })
       })
-    }
   }
 }
 \end{lstlisting}

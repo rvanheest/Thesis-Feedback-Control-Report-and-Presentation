@@ -30,13 +30,12 @@ class BallTracker extends Application {
     fbcX.combine(fbcY)(Ball2D(_, _))
   }
 
-  def feedbackSystem(pid: Component[Double, Acc]): BallFeedbackSystem $=$ {
+  def feedbackSystem(pid: Component[Double, Acc]): BallFeedbackSystem $=$
     pid.map(d $\Rightarrow$ math.max(math.min(d * 0.001, 0.2), -0.2))
       .scan(new AccVel)(_ accelerate _).drop(1)
       .scan(Ball1D(ballRadius))(_ move _)
       .sample(16 milliseconds)
       .feedback(_.position)
-  }
 
   def start(stage: Stage) $=$ {
     val canvas $=$ new Canvas(width, height)
@@ -153,7 +152,7 @@ object Draw {
     gc.stroke()
   }
 
-  def drawHistory(history: History)(implicit gc: GraphicsContext) $=$ {
+  def drawHistory(history: History)(implicit gc: GraphicsContext) $=$
     history.synchronized {
       history.zipWithIndex.foreach(item $\Rightarrow$ {
         val ((x, y), index) $=$ item
@@ -164,7 +163,6 @@ object Draw {
         gc.fillOval(x, y, 10, 10)
       })
     }
-  }
 }
 \end{lstlisting}
 
@@ -188,15 +186,12 @@ package object balltracker {
   type BallFeedbackSystem $=$ Component[Pos, Ball1D]
 
   case class AccVel(acceleration: Acc $=$ 0.0, velocity: Vel $=$ 0.0) {
-    def accelerate(acc: Acc): AccVel $=$ {
-      AccVel(acc, velocity + acc)
-    }
+    def accelerate(acc: Acc): AccVel $=$ AccVel(acc, velocity + acc)
   }
 
   case class Ball1D(acceleration: Acc, velocity: Vel, position: Pos) {
-    def move(av: AccVel): Ball1D $=$ {
+    def move(av: AccVel): Ball1D $=$
       Ball1D(av.acceleration, av.velocity, position + av.velocity)
-    }
   }
   object Ball1D {
     def apply(position: Pos): Ball1D $=$ Ball1D(0.0, 0.0, position)
@@ -204,9 +199,8 @@ package object balltracker {
 
   case class Ball2D(acceleration: Acceleration, velocity: Velocity, position: Position)
   object Ball2D {
-    def apply(x: Ball1D, y: Ball1D): Ball2D $=$ {
+    def apply(x: Ball1D, y: Ball1D): Ball2D $=$
       Ball2D((x.acceleration, y.acceleration), (x.velocity, y.velocity), (x.position, y.position))
-    }
   }
 }
 \end{lstlisting}
@@ -216,9 +210,8 @@ package object balltracker {
 \begin{lstlisting}[style=ScalaStyle, caption={JavaFx/Rx interface}, label={lst:ball-full-rx-reactive}]
 package object rx {
 
-  implicit def toHandler[T $<:$ Event](action: T $\Rightarrow$ Unit): EventHandler[T] $=$ {
+  implicit def toHandler[T $<:$ Event](action: T $\Rightarrow$ Unit): EventHandler[T] $=$
     new EventHandler[T] { override def handle(e: T): Unit $=$ action(e) }
-  }
 
   implicit class Events(val node: Node) extends AnyVal {
     def getEvent[T $<:$ InputEvent](event: EventType[T]): Observable[T] $=$ Observable.create[T](observer $\Rightarrow$ {
