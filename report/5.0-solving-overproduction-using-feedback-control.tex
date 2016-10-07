@@ -11,35 +11,8 @@ In this chapter we will propose an alternative to backpressure that makes use of
 
 \input{5.1-buffer-control}
 
-\clearpage
-\section*{Content}
-\begin{itemize}
-	\item[\checkmark] Distinction between hot and cold - we're only considering cold, as hot is not able to handle backpressure
-	\item[\checkmark] Bring handling backpressure to the start of the stream
-	\item[\checkmark] Feedback control of buffer - general overview of idea + diagram
-	\item[\checkmark] Requestable interface
-		\begin{itemize}
-			\item[\checkmark] request items and let them come down the stream on their own terms (i.e. in a reactive way)
-			\item[\checkmark] some implementations of Requestable (iterable collection, Database ResultSet)
-		\end{itemize}
-	\item[\checkmark] In dept discussion of the feedback system, the metric to be used, the setpoint, etc.
-	\item[\checkmark] Implementation of BackpressureObservable
-		\begin{itemize}
-			\item[\checkmark] feedback system fills the buffer
-			\item[\checkmark] reactively pull data from the buffer and send it downstream (exposed as Observable)
-		\end{itemize}
-	\item[\checkmark] Controller
-		\begin{itemize}
-			\item[\checkmark] PID control, why it doesn't work here
-			\item[\checkmark] relation with Janert
-			\item[\checkmark] incremental controller
-			\item[$\times$] can we create a chart of the performance of the PID vs incremental controller, similar to Janert?
-		\end{itemize}
-	\item[\checkmark] Wrapping in an API
-	\item How it works in practice
-		\begin{itemize}
-			\item backpressure examples, but then with the feedback solution
-			\item show graphs of how many items get requested each time
-		\end{itemize}
-	\item Conclusion
-\end{itemize}
+\todo{not sure what to do for the next section in this chapter; want to discuss this with \href{https://github.com/gousiosg}{@gousiosg}}
+\section*{Next section(s)???}
+Most likely I want to show some examples of where to apply this feedback based overflow control. \href{https://github.com/GeorgiKhomeriki}{@georgikhomeriki} has a nice \href{https://gist.github.com/GeorgiKhomeriki/97cc281a086f5a12c96ad36fe95d0393}{gist} put together with the effects of backpressure on the RxJava Observable. I already experimented with this, translated it to Scala and added the solution from the previous section, as shown \href{https://github.com/Applied-Duality/Feedback-Control/blob/master/BackpressureControl/RxScala/src/main/scala/fbc/backpressure/BackpressureDemo.scala}{here}. However, I'm not sure if and how to present this.
+
+And what else should I do here? Not sure yet. I'm thinking of some form of scientific justification (after all, this is a university level master thesis), but I haven't figured out yet what to do.
