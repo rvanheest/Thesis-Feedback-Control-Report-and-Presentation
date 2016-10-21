@@ -5,14 +5,18 @@ In \Cref{chap:exploring-the-problem-space} we discussed how streams can originat
 
 We also discussed several solutions to overproduction in the light of these three groups of sources. We learned that \textit{avoiding} by grouping or dropping data works perfectly for hot and cold asynchronous sources as a first line of defense. \textit{Callstack blocking} on the other hand is something that is automatically done to cold synchronous sources but can potentially be dangerous to hot and cold asynchronous sources as they might form a buffer of calls on the stack. The \textit{Reactive Streams} solution and RxJava's \textit{reactive pull} are to be used on cold sources alone, and cannot work with a hot source as they go against the contract of reactiveness as defined in \cite{berry1991-Reactive}.
 
-The central problem here is that we want a single reactive interface to share between all kinds of data streams. Although one might argue that you ought not to be using a reactive interface for an interactive (cold) source, we acknowledge the fact that in many circumstances it is more practical to view and treat them as `streaming' and `real-time' data rather than having them as interactive sources. In order to do so, we need a way to interact with cold sources in an overproduction-safe way. Reactive Streams and reactive pull achieve this by introducing the concept of backpressure and changing the reactive interface itself, making the consumer in charge, rather than the producer. Not only is this against the concept of reactiveness, it also gives many problems with implementing the operators defined on the reactive interface.
+The central problem here is that we want a single reactive interface to share between all kinds of data streams\footnote{Although one might argue that you ought not to be using a reactive interface for an interactive (cold) source, we acknowledge the fact that in many circumstances it is more practical to view and treat them as `streaming' and `real-time' data rather than having them as interactive sources.}. Note that this already works for hot sources; by definition they are suitable for a reactive interface. We only need a way to interact with cold sources in an overproduction-safe way.
 
-In this chapter we will propose an alternative to backpressure that makes use of the feedback systems described in \Cref{chap:intro-to-feedback-control,chap:feedback-api}. We already concluded that backpressure is not suitable for hot sources, so we will discard these from the discussion in this chapter. The solution proposed here will apply to interactive sources alone.
+Reactive Streams and RxJava's reactive pull achieve this by introducing the concept of backpressure and changing the reactive interface itself, making the consumer in charge, rather than the producer. Not only is this against the concept of reactiveness, it also gives many problems with implementing the operators defined on the reactive interface.
 
-\input{5.1-buffer-control}
+In this chapter we will propose an alternative to dealing with cold sources, that makes use of the feedback systems described in \Cref{chap:intro-to-feedback-control,chap:feedback-api}. We will show how the overproduction problem can be reduced to a control problem that can be solved using a feedback control system. Furthermore we provide a design and implementation for this feedback system and show how this can be fitted in the purely reactive interface that was described in \Cref{sec:pure-rx-interfaces}.
 
-\todo{not sure what to do for the next section in this chapter; want to discuss this with \href{https://github.com/gousiosg}{@gousiosg}}
-\section*{Next section(s)???}
-Most likely I want to show some examples of where to apply this feedback based overflow control. \href{https://github.com/GeorgiKhomeriki}{@georgikhomeriki} has a nice \href{https://gist.github.com/GeorgiKhomeriki/97cc281a086f5a12c96ad36fe95d0393}{gist} put together with the effects of backpressure on the RxJava Observable. I already experimented with this, translated it to Scala and added the solution from the previous section, as shown \href{https://github.com/Applied-Duality/Feedback-Control/blob/master/BackpressureControl/RxScala/src/main/scala/fbc/backpressure/BackpressureDemo.scala}{here}. However, I'm not sure if and how to present this.
+\input{5.1-overview}
 
-And what else should I do here? Not sure yet. I'm thinking of some form of scientific justification (after all, this is a university level master thesis), but I haven't figured out yet what to do.
+\input{5.2-universal-interactive-interface}
+
+\input{5.3-feedback-system}
+
+\input{5.4-controller}
+
+\input{5.5-backpressure-alternative}
