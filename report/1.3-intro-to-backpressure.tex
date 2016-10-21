@@ -50,8 +50,6 @@ The Reactive Streams API (see \Cref{lst:pub-sub}) looks fairly similar at first 
 
 This last method reveals the whole idea behind the Reactive Streams API, namely to let the \code{Subscriber} request a certain amount of elements from the \code{Publisher}. This way the \code{Subscriber} is in charge of how many elements it will receive eventually and the \code{Publisher} just has to send at most this amount of elements by calling the \code{onNext} method.
 
-Taking a step back and evaluating the true meaning of what the Reactive Streams collaboration has come up with, results in the conclusion that this API is interactive rather than reactive, since it lets the consumer (\code{Subscriber}) be in charge of the rate at which data is sent to it. This is discussed in more detail in a conference talk at Lambda Jam 2014 by Erik Meijer \cite{meijer2014-Derivation}. Compared to the earlier discussed \ieb collections, it only adds the features of non-blocking and requesting more than one element (which is what the \ieb interface technically does) per request. We will discuss the consequences of this API in more detail in a later section.
-
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Publisher, Subscriber and Subscription}, label={lst:pub-sub}]
 trait Publisher[T] {
