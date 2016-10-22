@@ -1,0 +1,25 @@
+\section{A universal, interactive interface}
+As mentioned above, we propose to not wrap the (cold) source directly in \code{Observable.create}, but instead wrap it in a universal, interactive interface. This is necessary since there are many variants of interactive interfaces that all do the same, but each one in a slightly different way.
+
+For example, the \itr interface has an \code{hasNext} and \code{next} method, which respectively check if there is a next element and return the next element. C\#'s \ier on the contrary has methods such as \code{moveNext}, which fetches the next element and returns whether there is a next element, and \code{current}, which actually returns the next element. For SQL database interaction, Java defines a \code{ResultSet}. This interface has a method called \code{next}, which moves the cursor to the next row of the result, and methods such as \code{getInt(int columnIndex)} and \code{getString(int columnIndex)} to get the content of a specific type from a column in the row the cursor is pointing to.
+
+One thing these interfaces have in common is that they contain a method that fetches a single element and in the mean time block the thread it is operating on. If this fetch takes some time, your program will have to wait for the result to come in. To prevent this blocking behavior, we propose a universal interactive interface in which you request an element and subscribe to a stream on which \textit{eventually} this element will be emitted. Note that we separate the concerns of \textit{requesting} a next element and \textit{receiving} a next element. In this way, the program can still continue to operate and maybe do some other things while it is waiting for the requested element.
+
+Given that we will use this interface in a feedback system that controls a buffer, we will pose an extra requirement on this interface. As the feedback system's controller might conclude that $n > 1$ elements need to be requested from the source, we must have to possibility to do so. Rather than $n$ times requesting 1 element, we want to request $n$ elements at once.
+
+The complete interface is called \code{Requestable[T]} and is shown in \Cref{lst:universal-interactive-interface}. It contains a single abstract method \code{request(n: Int): Unit}, which is called whenever the user of this interface wants a certain number of elements from the source. The requested elements will at some point in time be emitted by the \obs that is returned by \code{results: Observable[T]}. If no more elements are available in the source, this \obs will terminate with an \code{onCompleted} event. The implementor of \code{Requestable} is expected to use the \code{subject} to bring elements in the stream, whereas the user of the interface is expected to observe \code{results} in order to get the requested data. Note that this is a \emph{hot} stream: element emission will not be repeated as a second \obv subscribes to the stream.
+
+Example implementations of this interface for \itr and \code{ResultSet} are included in \Cref{app:backpressure-solution}.
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={Universal, interactive interface used in the feedback system}, label={lst:universal-interactive-interface}]
+trait Requestable[T] {
+
+  protected final val subject $=$ PublishSubject[T]()
+
+  final def results: Observable[T] $=$ subject
+
+  def request(n: Int): Unit
+}
+\end{lstlisting}
+\end{minipage}

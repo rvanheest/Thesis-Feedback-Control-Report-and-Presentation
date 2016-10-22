@@ -1,0 +1,18 @@
+\section{An API for cold sources}
+With the development of a feedback system on buffer control as described in the previous sections, we can create an API that wraps an interactive source and let it draw and reactively emit elements from the interactive source based on how fast the downstream can handle these elements. To be more precise, given an interactive source, we can wrap it in a \code{Requestable} as described in \Cref{lst:universal-interactive-interface} and use the feedback system in \Cref{lst:buffer-feedback-control} to request elements from the source and put them in the buffer. Then the downstream mechanism will poll the buffer continuously and emit these elements in a reactive fashion to a sequence of operators followed by a final \obv. With this we can create a function called \code{from} that takes a \code{Requestable[T]} as its argument and returns an \code{Observable[T]} that emits all elements in the source.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+def from[T](source: Requestable[T]): Observable[T]
+\end{lstlisting}
+
+The code for this function mainly consists of a combination of \Cref{lst:universal-interactive-interface,lst:buffer-feedback-control,lst:buffer-controller} and some glue to make it all work together. Refer to \Cref{app:backpressure-solution} for the full implementation.
+
+One thing to highlight is that \code{from} not only takes the wrapped source as an input parameter, but also requires the interval at which the feedback system has to run. This is the \code{interval} which is used in \Cref{lst:buffer-feedback-control} \cref{line:interval-in-feedback} to determine when to do a next measurement of the throughput in the feedback system.
+
+\begin{lstlisting}[style=InlineScalaStyle]
+def from[T](source: Requestable[T], interval: Duration): Observable[T]
+\end{lstlisting}
+
+As one can imagine, this greatly influences the speed at which the elements are being emitted. If a source can emit elements immediately and the interval is set to 1 second, it will take much longer for all elements to be emitted than when it is set 1 millisecond. Of course the speed will ultimately be determined by how fast the downstream can consume any element. Given the discussion above on when a new feedback cycle is initiated by measuring the throughput, we can conclude that if \code{interval} is set too fast, it will not influence the performance of the system as a whole, as it will skip the intervals at which the downstream did not show any successful interaction with the queue. If, however, the interval is set at a slower rate than it takes for the downstream to drain the buffer, this will for obvious reasons negatively influence the performance of the system. One could propose to let \code{interval} be dynamically controlled using another feedback system. However, for now we decided to define it as a constant value in the system and make this part of future research.
+
+With this we have created an API that creates an \obs from an interactive source while taking the possibility of overflow into account. Note that we did not have to change or add anything to the Rx interface. Instead we moved the overflow protection to the top of the operator chain, to the point where the source is polled directly. Now, when an \obv subscribes to the wrapped cold source, the feedback system will pull from the source on behalf of the \obv and push it as a reactive stream to the \obv.

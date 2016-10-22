@@ -1,0 +1,59 @@
+\section{Controlling overproduction using feedback control}
+Now that we are able to interact with any cold source via the \code{Requestable} interface, we can continue designing and discussing the actual feedback system that controls the size of the bounded buffer. As stated before, we do not control the \emph{actual} size of the buffer by using a setpoint of any arbitrary, fixed number of elements. Instead we observe how many elements were taken out of the buffer in relation to how many elements were in the buffer during a particular time span. With that we do in fact not control the buffer's \emph{size}, but rather control the \emph{throughput} of the buffer, while making changes to the number of elements that are requested from the source at every feedback cycle.
+
+The throughput in a particular time span ($\tau_t$) is defined in terms of how many elements are there to be consumed in relation to how many of these elements are actually being consumed. In a scenario where the elements that are not consumed in a certain time span are discarded or where the buffer is flushed at the end of each time span, the throughput would be equal to the ratio of how many elements were being consumed to how many elements were presented to be consumed in a certain time span. In our case, however, we do not wish to discard any elements but rather keep the left-over elements from the previous time span and make them part of what is available to be consumed in the next time span. With this we can define the throughput $\tau_t$ at time $t$ as
+
+\begin{equation}\label{eq:throughput-fraction}
+\tau_t = \frac{q_{t-1} + n_t - q_t }{q_{t-1} + n_t} \text{ \textbf{with} }q_{t-1}\text{, }q_t\text{, }n_t\text{ integers} \geq 0
+\end{equation}
+
+or
+
+\begin{equation}\label{eq:throughput-simple}
+\tau_t = 1 - \frac{q_t}{q_{t-1} + n_t} \text{ \textbf{with} }q_{t-1}\text{, }q_t\text{, }n_t\text{ integers} \geq 0
+\end{equation}
+
+In these formulas, $q_t$ is the size of the buffer at time $t$, whereas $n_t$ is the number of elements that has been put in the buffer between time $t - 1$ and $t$.
+
+\Cref{eq:throughput-simple} provides us with a sense of the range of $\tau_t$. Since $q_t \leq q_{t-1} + n_t$ (it is not possible to take out more elements than are present in the buffer) we can guarantee a lower bound for $\tau_t$ of $0.0$. Likewise, since $q_{t-1}, q_t, n_t \geq 0$, we can set an upper bound for $\tau_t$ of $1.0$. Still there is the possibility of dividing by 0, but we will guard against this in the next couple of paragraphs.
+
+\begin{equation}\label{eq:range-of-tau}
+0.0 \leq \tau_t \leq 1.0
+\end{equation}
+
+With $\tau$ as the metric for the feedback system that controls the buffer, it is not difficult to come up with an appropriate setpoint. We want the throughput to be as high as possible, which is, given \Cref{eq:range-of-tau}, $1.0$.
+
+The next point in designing this feedback loop is to determine when a new cycle starts. For this we have to observe that it will only make sense for a new cycle to start if the downstream has polled at least one element from the buffer. If in a certain time span the downstream is too busy processing one element, it does not make any sense to do a new measurement of the throughput. As new elements have been coming in based on the previous feedback cycle, but no elements have been taken out of the buffer, we do not need to request more elements. Instead, we just extend the time span by merging it with the next, until at least one element has been taken out of the buffer. Only then the feedback loop will run a new cycle.
+
+Note that using this definition of a feedback cycle is a guard against dividing by 0 in \Cref{eq:throughput-fraction,eq:throughput-simple}. This can only happen when at the start of a time span the buffer is empty and during this time span no elements are coming into the buffer. This can either be due to an unfortunate decision of the controller (which we will discuss in \Cref{subsec:controller-design}) the request no further elements from the source, even though the buffer is empty, or because it takes some amount of time before the source can produce its next element. If the buffer was empty at the start and no elements were coming in, the downstream would at no point during this time span be able to poll an element from the buffer. Because of this, the current time span is merged with the next time span, without running through a whole new cycle and therefore also without running into dividing by 0 while calculating $\tau$.
+
+\subsection*{Implementation}
+With this metrics and its constraints in mind, we can start implementing this system using the feedback API as described in \Cref{chap:feedback-api}. For now we will assume the existence of the controller that will be used in this feedback system, even though it will only be discussed first in \Cref{subsec:controller-design}. We assume a value \code{controller} of type \code{Component[Double, Int]}, with an input as the difference between the setpoint value and the actual throughput, and an output as the number of elements to be requested from the source. We furthermore assume the existence of a value \code{source} of type \code{Requestable[T]} from which we can request these element of a generic type \code{T}.
+
+The buffer is modeled as a \code{BlockingQueue[T]}, such that multiple threads (to put and poll respectively) can safely interact with it. Besides that we introduce two flags of type \code{AtomicBoolean}, which signal respectively whether the source is completed (it has no more values) and whether there has been a successful poll during the current feedback cycle.
+
+The code for the feedback system itself is shown in \Cref{lst:buffer-feedback-control}. Given the controller, we first send the number of requested elements to the source, which then starts producing at most this amount of elements. These are received by the feedback system by listening to \code{source.results}. These elements are then put into the queue.
+
+To measure the throughput of the buffer, we collect the elements during a certain interval. From this we measure how many elements have come in the queue, as well as the total number of elements that are currently in the queue. As a side-effect we reset the flag for \code{pollerVisited} to false, since we are now done interacting with the queue. Also, we provide a default starting value for the feedback system at this point, since initially the queue was empty and no elements were going in the queue. It is necessary to do so, as we next compare the current situation with the previous situation by using a \code{buffer(2, 1)}. Finally, we compute the throughput as described in \Cref{eq:throughput-fraction}. This value is fed as the input of the next feedback cycle without performing any operations on the way back.
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={Feedback system for controlling the buffer}, label={lst:buffer-feedback-control}]
+controller
+  .tee(n $\Rightarrow$ source.request(n))
+  .liftRx(_.publish(_ $\Rightarrow$ source.results))
+  .tee(x $\Rightarrow$ queue.put(x))
+  .liftRx(_.buffer(interval.filter(_ $\Rightarrow$ pollerVisited.get()))) | \label{line:interval-in-feedback} |
+  .map(in $\Rightarrow$ (in.size, queue.size))
+  .tee(_ $\Rightarrow$ pollerVisited.compareAndSet(true, false))
+  .startWith((0, 0)) // initially there is no input and the queue is empty
+  .liftRx(_.buffer(2, 1))
+  .filter(_.size $==$ 2)
+  .map {
+    case Seq((_, queueBefore), (in, queueAfter)) $\Rightarrow$
+      (queueBefore - queueAfter + in).toDouble / (queueBefore + in)
+  }
+  .feedback(throughput $\Rightarrow$ throughput)
+\end{lstlisting}
+\end{minipage}
+
+The rest of the code, the queue polling behavior, initialization of various values and the wrapping of the whole mechanic in an \code{Observable.apply}, are considered trivial. This can be found in \Cref{app:backpressure-solution}.
