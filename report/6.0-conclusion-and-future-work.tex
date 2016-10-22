@@ -29,8 +29,8 @@ We proposed a new solution to the overproduction problem that uses feedback cont
 
 With this we have reduced the problem of overproduction to a problem of controlling the size of a buffer. Here the metric (or control output) is the \textit{throughput}, which we bound to be a number between 0.0 and 1.0 (boundaries inclusive). Since the ideal value for the throughput is 1.0 (meaning that all data is consumed directly), we set this as the setpoint of the feedback system that controls the buffer. Using a custom, incremental controller, we transform the tracking error into a new number of elements to be requested from the source.
 
-\subsection*{Can this new solution to overproduction be integrated into an existing API for reactive programming?}
-Using our feedback API we were able to construct this feedback system in a `reactive' way and thereby integrate it with the reactive API. Integrating this new solution into the newly created RxMobile API turned out to be as easy as wrapping it into an \code{Observable.create}. 
+%\subsection*{Can this new solution to overproduction be integrated into an existing API for reactive programming?}
+%Using our feedback API we were able to construct this feedback system in a `reactive' way and thereby integrate it with the reactive API. Integrating this new solution into the newly created RxMobile API turned out to be as easy as wrapping it into an \code{Observable.create}.
 
 \section{Future work}
 Given the solution to overproduction presented in this thesis, we still see room for improvements and alternative solutions. In this section we will lay out some of the work that is still open for further research. Here we will first focus on open work in the field of overflow protection and then describe some interesting problems in the field of feedback control.
@@ -43,26 +43,8 @@ Another point of interest is the new RxJava2.0 library\footnote{this completely 
 In our solution we have considered the consumer to be a single threaded process which can only consume the elements one by one. This put a restriction on the kinds of sources that could be applied to this solution: due to the fact that we request a certain number of elements, a hot source cannot be applied here. An interesting alternative to look into is to control the number of consumers rather than controlling a buffer size. This is similar to various scheduling and allocation algorithms in distributed computing, but in our opinion this can also be applied to the field of reactive programming. Controlling the number of consumers in this context can either mean a single consumer with a multi threaded process, which can consume multiple elements at a time or literally a variable number of single threaded consumers that work in parallel of each other. We hypothesize that this solution would be suitable not only for cold sources but for hot sources alike.
 
 \subsection*{Feedback control}
+While researching the field of feedback control, it was very surprising to see that this technique was hardly ever used in computer science. Despite it being well known and often used in all kinds of fields of science, it was hard to find any related work in our field. A possible explanation for this might be the highly involved mathematical notions that formally describe a feedback system, which are hard or impossible to be applied to computer science. More work needs to be done to formalize this technique for this field. A particular distinction to be focused on is the continuous nature of a mathematical feedback system and discrete nature that is required in computer science.
 
+On the same note, feedback control provides a simple but powerful solution to a wide range of problems. However, the problems we have seen during our research in this field all look alike. This makes us hypothesize that a formal classification can be made of problems that can be solved using feedback control. Just like some problems can be classified as $P$, $NP$ or $NPC$, we hypothesize that a similar thing can be done for a class of problems $FC$ that can be solved using feedback control. Metrics about complexity of runtime and space would be equally interesting to formalize for this class, such that comparisons can be made of the performance of different feedback systems.
 
-\todo{discuss the potentials of future work as listed below}
-\begin{itemize}
-	\item Backpressure
-	\begin{itemize}
-		\item Push solution - control number of workers with certain metrics. This will presumably also work with hot streams such as UI events and time
-		\begin{itemize}
-			\item Queue length
-			\item Net queue length change
-			\item In/out ratio per time unit
-		\end{itemize}
-		\item Using RxJava2.x, you can apparently define a `backpressure policy' on the new \code{Flowable} type
-		\item \code{interval} in our feedback system; control it using feedback rather than having it as a constant in \code{from}
-	\end{itemize}
-	\item Feedback control
-	\begin{itemize}
-		\item It’s basically an algorithm to solve ‘control problems’. How is the problem class defined where feedback control can be used as an easy solution?
-		\item It’s difficult to tune PID controllers. (refer to blog) Would it be possible to use ML for this process?
-		\item The PID controller originally comes from the field of physics and mechanical/electrical engineering and is considered to be the default controller, given its (mathematical) simplicity and quick response to change. Does this still hold for computer science, since we don’t need/use mathematical models? Or is there an alternative, easier to tune, controller that could be considered as default in computer science? (also take into account that the PID controller makes the assumption of a \textit{continuous} world, whereas computer science presumes a \textit{discrete} world)
-		\item We derived a feedback API based on a transformation of $\obs \Rightarrow \obs$. Would it be possible to also do make a similar API by just adding the feedback operator to the \obs API? This would allow for some form of recursion within the stream, allowing for a whole new class of problems to be solved using reactive programming.
-	\end{itemize}
-\end{itemize}
+Another interesting part of control theory that requires more research is based on the controller. For feedback systems in physics and engineering, who all assume a \textit{continuous} world in which is feedback system is ran, the PID controller is the standard controller to use, due to its simplicity en accuracy. However, this controller is not particularly well-suited for systems that run in a \textit{discrete} world, as is the case in computer science. We hypothesize that a similar, but discrete, controller should exist for these systems.
