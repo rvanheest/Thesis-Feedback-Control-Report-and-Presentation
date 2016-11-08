@@ -1,13 +1,15 @@
 \section{Towards a feedback API}
 If we want to develop a library or API for feedback control we should keep a couple of things in mind. First of all the API should be production worthy: it should be able to drive production software/hardware and it should be easy for the developers of those systems to put together a feedback loop, without having to understand much about the mathematics that is going on in theoretical control theory. Also the concerns mentioned in the previous section should be kept in mind: the API should not rely on any form of mutable state if this is not desired by the developer, it should be easily able to support concurrency and asynchronicity and should not rely on any regularity in feedback cycles.
 
-The idea by Janert to model a feedback system in the same way as it is drawn (see for example \Cref{fig:balltracker-diagram}) is something that looks very appealing to use as a foundation of our API. This means that we create a feedback system by composing smaller entities or by chaining transformations. In the same way for example Scala's collection API is build up, using (monadic) operators to transform and manipulate a collection. Likewise we will use higher order functions to compose feedback systems.
+The idea by Janert to model a feedback system in the same way as it is drawn (see for example \Cref{fig:balltracker-diagram}) is something that looks very appealing to use as a foundation of our API. This means that we create a feedback system by composing smaller entities or by chaining transformations. In the same way for example Scala's collection API is written, using (monadic) operators to transform and manipulate a collection. Likewise we will use higher order functions to compose feedback systems.
 
-Some of the basic composition operations that are required for this to work are \textit{sequential composition}, which passes the output of the first component as the input of the second component, \textit{parallel composition}, which passes its input to multiple components and combines the output of each component into a single value using a combinator function, \textit{merging the output of two components} into a single value and \textit{feeding back the output of a component to its input} to create a circuit or feedback loop. Other composition operators that one can imagine are operators like the ones found in monadic APIs in Scala or Java 8 such as collections, \code{Future}, \code{Try}, \code{Option} or the Rx \obs. Examples of these are \code{map}, \code{filter}, \code{flatMap}, \code{take}, \code{drop}, \code{scan}, etcetera.
+Some of the basic composition operations that are required for this to work are \textit{sequential composition}, which passes the output of the first component as the input of the second component, \textit{parallel composition}, which passes its input to multiple components and combines the output of each component into a single value using a combinator function, \textit{merging the output of two components} into a single value and \textit{feeding back the output of a component to its input} to create a circuit or feedback loop. Other composition operators that one can imagine are operators like the ones found in monadic APIs in Scala or Java 8 such as collections, \code{Future}, \code{Try}, \code{Option} or the Rx \obs. Examples of these are \code{map}, \code{filter}, \code{take}, \code{drop} and \code{scan}.
+
+In this section we will derive and implement an API for feedback control that uses the \obs as its foundational type and Haskell's \code{Arrow} type class as the way to do composition over the components of the feedback system. The choice for \code{Arrow} here seems very natural as it already defines operators for \textit{sequential} and \textit{parallel} composition. It also provides the \textit{feedback loop} composition in a related type class. 
 
 \subsection{Derivation}
 \label{subsec:api-derivation}
-To get to a suitable API we must first of all observe that a component is isomorphic to a Mealy Machine \cite{mealy1955-mealymachine}. This is a special variant of the finite-state machine whose output values are determined by both its current input and its current state. It can mathematically be described as a 6-tuple $(\Sigma, \Gamma, S, s_0, \delta, \omega)$ \cite{carroll1989-theoryoffiniteautomata} where
+To get to a suitable API we must first of all observe that a component as described by Janert is isomorphic to a Mealy Machine \cite{mealy1955-mealymachine}. This is a special variant of the finite-state machine whose output values are determined by both its current input and its current state. It can mathematically be described as a 6-tuple $(\Sigma, \Gamma, S, s_0, \delta, \omega)$ \cite{carroll1989-theoryoffiniteautomata} where
 
 \begin{itemize}
 	\item $\Sigma$ denotes the input alphabet
@@ -18,15 +20,15 @@ To get to a suitable API we must first of all observe that a component is isomor
 	\item $\omega$ denotes the output function; $S \times \Sigma \rightarrow \Gamma$
 \end{itemize}
 
-Note that the two functions $\delta$ and $\omega$ can be coalesced into a single function $\lambda: S \times \Sigma \rightarrow S \times \Gamma$.
+We can define an intuitive mapping from this mathematical description of a Mealy Machine to Janert's component to show their relation. Observe that $\Sigma$ and $\Gamma$ are the component's input and output types (which are of type \code{Double}). The mutable state that is implicitly present in the component can be denoted by the set of internal states $S$ in the Mealy Machine, with $s_0$. For a component like the \textit{On/Off Controller} this mutable state is a \code{Boolean} and therefore $S = {True, False}$, while the \textit{Integral Controller} holds the current sum of all past elements and thus maps to a set $S$ of all $Double$ values. More complex states can be created by applying categorical principles of product and co-product. Transition function $\delta$ and output function $\omega$ are generalized versions of the \code{work} method on Janert's component. These transform the input, combined with the component's current state, into an output and a new state. For the \textit{Integral Controller} this transformation consists of adding the input to the current sum, saving this new cumulative as the component's new state as well as returning this new state.\\
 
-This function $\lambda$ can also be written as a type definition in Scala:
+Note that the two functions $\delta$ and $\omega$ can be coalesced into a single function $\lambda: S \times \Sigma \rightarrow S \times \Gamma$. This function $\lambda$ can also be written as a type definition in Scala:
 
 \begin{lstlisting}[style=InlineScalaStyle]
 type Component[S, I, O] $=$ (S, I) $\Rightarrow$ (S, O)
 \end{lstlisting}
 
-Notice that we use \code{I} and \code{O} to denote the input alphabet $\Sigma$ and output alphabet $\Gamma$ respectively. Equivalent to this type definition is the following static object \comp, containing a single function \code{apply}.
+Notice that we use \code{I} and \code{O} to denote the input alphabet $\Sigma$ and output alphabet $\Gamma$ respectively. Equivalent to this type definition is the following object \comp, containing a single function \code{apply}.
 
 \begin{lstlisting}[style=InlineScalaStyle]
 object Component {
