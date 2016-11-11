@@ -24,29 +24,36 @@ We can define an intuitive mapping from this mathematical description of a Mealy
 
 Note that the two functions $\delta$ and $\omega$ can be coalesced into a single function $\lambda: S \times \Sigma \rightarrow S \times \Gamma$. This function $\lambda$ can also be written as a type definition in Scala:
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 type Component[S, I, O] $=$ (S, I) $\Rightarrow$ (S, O)
 \end{lstlisting}
+\end{minipage}
 
 Notice that we use \code{I} and \code{O} to denote the input alphabet $\Sigma$ and output alphabet $\Gamma$ respectively. Equivalent to this type definition is the following object \comp, containing a single function \code{apply}.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 object Component {
   def apply[I, O, S](s: S, i: I): (S, O)
 }
 \end{lstlisting}
+\end{minipage}
 
 We can now rewrite \comp to be an interface and put the state \code{S} inside \comp implicitly. This removes the need for an input parameter of type \code{S} in the \code{apply} method, since the state is then contained inside the \code{this} pointer. Instead of the \code{S} in the return type we now, however, have to return a \comp that contains the output state.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 trait Component[I, O] {
   // (im)mutable state in here
   def apply(i: I): (Component[I, O], O)
 }
 \end{lstlisting}
+\end{minipage}
 
 Instead of returning a tuple, the \code{apply} method can be split into two separate methods. \code{update} will accept something of input type \code{I} and return a new \comp, containing its new state. The output value of the transformation on the original component together with \code{I} can be retrieved from the newly returned \comp using the \code{action} method.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 trait Component[I, O] {
   // (im)mutable state in here
@@ -54,6 +61,7 @@ trait Component[I, O] {
   def action: O
 }
 \end{lstlisting}
+\end{minipage}
 
 This version of \comp gives us a first suitable implementation for composing over components. We will refer to this version as the \textit{Immutable Component}. Notice that this version is actually used in our blog post ``\textit{Feedback Control for Hackers}'' \cite{heest2015-feedback-for-hackers} as the basis of the simulation framework used in several case studies.
 
@@ -79,6 +87,7 @@ Here the internal state of the \comp, that was earlier referred to as \code{S}, 
 
 The observant reader will already have noticed the striking similarity between the \textit{Immutable Component} and the \code{Component} interface by Janert \cite{janert2013-feedback}. In fact, our latest \comp interface is the immutable variant of his interface. For this, we have to change the output type of the \code{update} function to \code{Unit} and perform the action of updating the internal state of the \comp as a side-effect. The new state will no longer be returned, but is included in the instance of \comp itself. We will refer to this variant of the interface as the \textit{Mutable Component}.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 trait Component[I, O] {
   // mutable state in here
@@ -86,6 +95,7 @@ trait Component[I, O] {
   def action: O
 }
 \end{lstlisting}
+\end{minipage}
 
 Using this \textit{Mutable Component} interface we can implement \code{RunningAverage} again. Rather than having the \code{queue} as a constructor parameter, we can now treat it as a field that is automatically instantiation on construction. With this we can mutate the queue when \code{update} is called. Notice that for this we either need to use a mutable queue here or declare the field mutable by using a \code{var}. Finally, the implementation of \code{action} doesn't change with respect to the former version.
 
@@ -107,12 +117,14 @@ class RunningAverage(n: Int) extends Component[Double, Double] {
 
 Using the \textit{Mutable Component}, calling the \code{work} method in Janert's \comp interface is equivalent to calling \code{update} and \code{action} in sequence. To conform to this interface, we can write our \comp as shown below. In technical terms this is called the coproduct, which we have already seen briefly in \Cref{subsec:derivation}.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 trait Component[I, O] {
   // mutable state in here
   def update(i: I): O
 }
 \end{lstlisting}
+\end{minipage}
 
 As Janert already concluded, this interface is fairly suitable for simulation purposed, but does is not meant for production services. Although it is possible to use this interface in production, it would mean that we would introduce a fair bit of mutable state, which is not the most desirable thing in todays distributed systems, microservice architecture or APIs. Besides that, the implementer of this \comp interface has to deal with concurrency all by himself if he wants to make sure that no race conditions or other concurrency side effects happen.
 
@@ -124,6 +136,7 @@ In order to move toward this goal we will again perform a couple of transformati
 
 The new function's second argument is called the continuation, which specifies what to do with the original function's output afterwards. In the code below we define two functions \code{f} and \code{g} to be the original function and the continuation-passing-style function respectively. We also define a function \code{h} which transforms a \code{B} into a \code{Unit}. With this we can show that first calling \code{f} and then \code{h} gives us the same result as calling \code{g} with \code{h} as its second parameter.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 def f(a: A): B
 def g(a: A, cont: B $\Rightarrow$ Unit): Unit
@@ -131,10 +144,11 @@ def h(b: B): Unit
 
 h(f(a)) $==$ g(a, h)
 \end{lstlisting}
+\end{minipage}
 
-\begin{minipage}{\linewidth} % this is here just to keep this paragraph and the code below together and not separate it by a page break (which it does without the minipage)
 A second transformation that we require is the notion of currying, which is derived from category theory, known as a \textit{Cartesian closed category}. We will not go into the mathematical details, but just focus on the application in the field of programming, types and function. Currying basically means that you can split a list of function parameters into an equivalent series of functions. For example, given a function \code{f} with parameters of type \code{A} and \code{B} and return type \code{C}, we can define an equivalent function \code{g} which is the curried form of \code{f}:
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 def f(a: A, b: B): C
 def g(a: A)(b:B): C
@@ -145,45 +159,53 @@ Function \code{f} in this example has type \code{(A, B) $\Rightarrow$ C}, which 
 
 We will use now use continuation passing style and currying in the continuation of our derivation. So far we have an interface which similar to the one presented in Janert's book.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 trait Component[I, O] {
   // mutable state in here
   def update(i: I): O
 }
 \end{lstlisting}
+\end{minipage}
 
 First of all, we can apply continuation passing style and take the output type \code{O} as the input of a function which will be a second input parameter of the new \code{update} method.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 trait Component[I, O] {
   // mutable state in here
   def update(i: I, f: O $\Rightarrow$ Unit): Unit
 }
 \end{lstlisting}
+\end{minipage}
 
 With this new interface we could potentially chain one \comp to another, by calling the \code{update} method of the second \comp in the second input parameter of the first. This however would ugly pretty fast, as lots of components would mean lots of nested functions, which are not very pleasant for the eye. What we will do instead is continue by observing that \code{update} has two parameters, which means that we can apply currying and decompose the parameter list.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 trait Component[I, O] {
   // mutable state in here
   def update(i: I)(f: O $\Rightarrow$ Unit): Unit
 }
 \end{lstlisting}
+\end{minipage}
 
 Now that we have a function \code{update} with type \code{I $\Rightarrow$ (O $\Rightarrow$ Unit) $\Rightarrow$ Unit}, we can use the right associativity law on functions and conclude that \code{update} can also be read as a function which has input type \code{I} and output \code{(O $\Rightarrow$ Unit) $\Rightarrow$ Unit}. Although this return type doesn't seem so useful at first sight, we must remember that this is almost identical to the actual type definition of \obs (see \Cref{eq:obs}). The major difference is in the input type of the inner function, which is not \code{Try[Option[O]]} but just \code{O} instead. However, it seems perfectly reasonable that the computation inside a \comp may fail or terminate all computation inside that \comp. Following this reasoning, we can now write our interface as follows:
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 trait Component[I, O] {
   // mutable state in here
   def update(i: I): Observable[Unit]
 }
 \end{lstlisting}
+\end{minipage}
 
 Although one could stop here and develop operations for composing and executing instances of this interface, we will continue with some more transformations in order to further optimize the upcoming API around this interface. We must observe first of all that there is still mutable state involved in this interface, which we have concluded before we want to minimize as much as possible. Secondly, when sequentially composing two instances of this interface together, we have a way for the \code{OnNext}s of the first instance to go into the second, but we have no possibility to propagate an \code{OnError} or \code{OnCompleted} event from the first instance to the second.
 
-\begin{minipage}{\linewidth} % this is here just to keep this paragraph and the code below together and not separate it by a page break (which it does without the minipage)
 In order to achieve these goals, we next apply the inverse of a coproduct, called a \code{product} in categorical terms, to split the \code{update} method into two methods \code{in} and \code{out}, which accept the input parameter \code{I} and return the \code{Observable[O]} respectively.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 trait Component[I, O] {
   // mutable state in here
@@ -195,12 +217,14 @@ trait Component[I, O] {
 
 Notice that when concatenating multiple instances of \comp, we only call \code{out} once while setting up the chain, whereas \code{in} gets called every time the previous component emits an element. As discussed before, these emissions only involve the \code{OnNext} events, since the \code{OnError} and \code{OnCompleted} events have nowhere to go. Now that we have split \code{update} into two separate methods, we can easily add extra methods for these missing events. Rather than doing that directly, however, we can equally well use the official way to add these methods, which is by inheriting \comp from \obv, which already contains these three methods all together.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 trait Component[I, O] extends Observer[I] {
   // mutable state in here
   def out: Observable[O]
 }
 \end{lstlisting}
+\end{minipage}
 
 To get this to work, there is a little bit of plumbing to be done. First of all, we need to get the values received in the \obv into the output \obs and meanwhile transform instances of type \code{I} into instances of type \code{O}. As we do not intent the implementer of the \comp interface to override the input or output functions, we have to introduce a new function into the interface in which the actual functionality of the component can be declared: \code{transform(is: Observable[I]): Observable[O]}. We also introduce a \subj which receives the input events from the \obv methods. As discussed in \Cref{subsec:subjects}, a \subj is both an \obv and an \obs, which means that we can implement the output function as applying the new \code{transform} function to this \subj.
 
@@ -358,10 +382,12 @@ class Arrow a where
 \subsubsection{Parallel composition}
 The careful reader may either have noticed that the definition of an arrow as provided in \Cref{lst:arrow-typeclass} is not complete or wonder how to implement an \code{add} function in arrow style. As Hughes shows, this is simple in a monadic context, but the current functions in the \textit{Arrow} type class do not satisfy the need.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineHaskellStyle]
 add :: Arrow a $\Rightarrow$ (a b Int) $\rightarrow$ (a b Int) $\rightarrow$ (a b Int)
 add x y = $\ldots$
 \end{lstlisting}
+\end{minipage}
 
 The input type \code{b} of the resulting arrow of this function needs to supply its value to both inputs of this functions arguments and combine its outputs. This is however not possible with the current \code{(>>>)} operator we have defined. Hence we require some new operators to be added to the \textit{Arrow} type class. Hughes defines these operators in terms of each other, leaving only one operator open that requires a custom implementation.
 
@@ -455,10 +481,12 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 
 Using these new operators, we are now able to define the \code{add} function in arrow style as described above. We compose the two arrows using a fanout and bring the two results together by using another component that adds the two values together. Notice that this function would be particularly interesting when implementing a PID controller or any other parallel composed set of components.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineHaskellStyle]
 add :: Arrow a $\Rightarrow$ (a b Int) $\rightarrow$ (a b Int) $\rightarrow$ (a b Int)
 add x y = (x &&& y) >>> arr ($\lambda$(b,c) $\rightarrow$ b + c)
 \end{lstlisting}
+\end{minipage}
 
 Hughes finishes this trail by generalizing the \code{add} to a \code{liftA2}, which is equivalent in functionality to Haskell's \code{liftM2} which combines the results of two monadic computations. Besides two input arrows, \code{liftA2} accepts a combinator function that is applied after the fanout composition of the two arrows. We define a similar operator called \code{combine} in our API for the purpose of parallel composition:
 
@@ -518,10 +546,12 @@ One of the reasons that Hughes introduced the \textit{Arrow} \cite{hughes2000-ar
 
 As an alternative to introducing the \code{(<*>)} operator as Swierstra and Duponcheel did, Hughes introduces the \textit{Arrow} as the answer to combining non-monadic computations. With this he shows that every \textit{Monad} is in fact an \textit{Arrow}, but that not every \textit{Arrow} is a \textit{Monad}. For this he introduces another type class \textit{ArrowApply} (\Cref{lst:arrow-apply}), which he shows to be equivalent to the \textit{Monad} type class. From this it follows that for an \textit{Arrow} to be also a \textit{Monad} it must be able to implement the \textit{ArrowApply} type class.
 
-\begin{lstlisting}[style=HaskellStyle, caption={\textit{ArrowApply} type class}, label={lst:arrow-apply}, captionpos=b, numbers=none]
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=HaskellStyle, caption={\textit{ArrowApply} type class}, label={lst:arrow-apply}, numbers=none]
 class Arrow a $\Rightarrow$ ArrowApply a where
   app :: a (a b c, b) c
 \end{lstlisting}
+\end{minipage}
 
 \begin{minipage}{0.6\linewidth}
 \begin{lstlisting}[style=HaskellStyle, caption={Monadic type classes}, label={lst:type-classes-for-monads}, captionpos=b, numbers=none]
@@ -579,12 +609,14 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 
 Contrary to the previous type classes, it turns out that we are not able to implement the \textit{Monad}'s \code{(>>=)} (or \code{flatMap}) operator. Note that this is equivalent to saying that we are unable to implement the \textit{ArrowApply}'s \code{app} operator. Writing down these definitions shows how non-sensible both these definitions are:
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=InlineScalaStyle]
 implicit class MonadOperators[I, O](val src: Component[I, O]) {
   def flatMap[X](f: O $\Rightarrow$ Component[I, X]): Component[I, X]
   def app(implicit ev: I $<:<$ (Component[I, O], I)): Component[I, O]
 }
 \end{lstlisting}
+\end{minipage}
 
 From the perspective of \code{flatMap} it would mean that every time \code{src} produces an output, it is fed to the function \code{f}, which would produce a completely new \comp to be subscribed to the result of \code{flatMap}. This would mean that after $n$ outputs, there are $n$ instances of \comp which are `dynamically' created and that the resulting component will emit $n$ values. The same holds for \code{app}, which would receive a new \comp to invoke with every input it receives.
 
