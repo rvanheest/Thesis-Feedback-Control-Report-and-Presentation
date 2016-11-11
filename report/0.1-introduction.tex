@@ -1,5 +1,4 @@
-\chapter*{Introduction}
-\addcontentsline{toc}{chapter}{Introduction}
+\chapter{Introduction}
 
 Reactive programming is a paradigm in which the program observes events that occur in its environment and reacts to these events as they occur. This is in contrast to the more familiar interactive program flow in which a program \emph{requests} some form of data and only continues the program flow once this data is received. Instead of pulling data in the usual interactive way, a reactive program has data (or events) being pushed at it, on which it responds accordingly. Some of the most common usages of reactive programming can be found in user interface interaction (mouse moves, key events or button presses), network communication, database queries, clocks and timers \cite{meijer2012-YMIAD}.
 
@@ -15,24 +14,22 @@ Feedback control is a technique that is mainly used in mechanical and electrical
 
 Although well suited in several use cases, control theory is generally overlooked in computer science and software engineering. To the best of our knowledge, there are no well-written libraries that allow software engineers to construct and run feedback systems in a production level system. As we will use feedback control in our solution for the overproduction problem, we will study the composition of feedback systems and present a concise but powerful library for this purpose that is based on the concepts of functional and reactive programming. Using this library, we will then propose our solution to the overproduction problem.
 
-\section*{Research Questions}
-\addcontentsline{toc}{section}{Research Questions}
+\section{Research Questions}
 This thesis answers a number of questions that are related to reactive programming, overproducing sources in a reactive context and feedback control, which are listed and briefly introduced in this section.
 
-\subsubsection*{In which ways can a reactive program already be controlled to prevent overproduction?}
+\subsubsection{In which ways can a reactive program already be controlled to prevent overproduction?}
 There are multiple solutions for controlling overproduction in the context of reactive programming. To understand these solutions, we first need to identify what various types of reactive programs exist and consider their mutual similarities and differences. Based on this we can identify which existing solution for controlling overproduction will or will not work for each particular type of reactive program. This analysis can further be used to create a better understanding of which type of reactive program is suited for the solution proposed in this thesis.
 
-\subsubsection*{How can we implement a \emph{reactive} feedback system that is composed of smaller parts?} 
+\subsubsection{How can we implement a \emph{reactive} feedback system that is composed of smaller parts?} 
 As the solution to overproduction that is presented in this thesis will make use of control theory and feedback control, it is important to develop an understanding of these techniques and create the tools necessary to construct feedback systems in an easy way. This is particularly important since (to the best of our knowledge) no libraries or APIs exist that allow for composing and running feedback systems. We explore how a feedback system can be seen as a reactive program and implement a library on top of existing reactive programming API's.
 
-\subsubsection*{How can the overproduction problem be reduced to a feedback control problem?}
+\subsubsection{How can the overproduction problem be reduced to a feedback control problem?}
 In order to solve the problem of overproduction using feedback control, it is necessary to get out of the context of reactive programming and abstract this into more formal problems that can be solved using the principles control theory. Based on the feedback system that solves this control problem, a mapping can be created to the original problem of controlling overproduction in a reactive program.
 
-%\subsubsection*{Can this new solution to overproduction be integrated into an existing API for reactive programming?}
+%\subsubsection{Can this new solution to overproduction be integrated into an existing API for reactive programming?}
 %In order for this solution to be useful in practice, it is important to be able to integrate it with existing API's for reactive programming. To validate this, a clean API is needed that does not yet implement any solutions for overproduction by default. For this purpose we use the newly created RxMobile API \cite{RxMobile}.
 
-\section*{Outline}
-\addcontentsline{toc}{section}{Outline}
+\section{Outline}
 In the next chapter we will continue this thesis report with a short discussion on the definitions of interactive and reactive programming as it is defined in literature (\Cref{chap:problem-statement}). As we do not assume any prior knowledge of the reader in reactive programming, this is followed with an extensive introduction to a widely used reactive programming API whose concepts have been implemented in many languages. We will discuss the basic principles of this API as well as it's derivation from and relationships with interactive programming interfaces. Once these foundations are laid out, we will give an overview of the different ways in which it tries to overcome overproduction problems. It is important to first gain a good understanding of reactive programming in general and this API especially, since we will build on top of these in the rest of this thesis.
 
 Different circumstances require different approaches to overproduction, as we already hypothesized above. In \Cref{chap:exploring-the-problem-space} we will explore and categorize these circumstances and describe how overproduction is currently best dealt with in each of these situations. Here we also discuss the current state of abstraction over reactive programming and describe our solution to overproduction and explain for which type of reactive programs we think this will apply.
