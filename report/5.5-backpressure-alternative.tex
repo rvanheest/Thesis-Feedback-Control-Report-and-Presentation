@@ -20,3 +20,21 @@ def from[T](source: Requestable[T], interval: Duration): Observable[T]
 As one can imagine, this greatly influences the speed at which the elements are being emitted. If a source can emit elements immediately and the interval is set to 1 second, it will take much longer for all elements to be emitted than when it is set 1 millisecond. Of course the speed will ultimately be determined by how fast the downstream can consume any element. Given the discussion above on when a new feedback cycle is initiated by measuring the throughput, we can conclude that if \code{interval} is set too fast, it will not influence the performance of the system as a whole, as it will skip the intervals at which the downstream did not show any successful interaction with the queue. If, however, the interval is set at a slower rate than it takes for the downstream to drain the buffer, this will for obvious reasons negatively influence the performance of the system. One could propose to let \code{interval} be dynamically controlled using another feedback system. However, for now we decided to define it as a constant value in the system and make this part of future research.
 
 With this we have created an API that creates an \obs from an interactive source while taking the possibility of overflow into account. Note that we did not have to change or add anything to the Rx interface. Instead we moved the overflow protection to the top of the operator chain, to the point where the source is polled directly. Now, when an \obv subscribes to the wrapped cold source, the feedback system will pull from the source on behalf of the \obv and push it as a reactive stream to the \obv.
+
+To demonstrate the intended use of this API, we included a small example below in \Cref{lst:requestable-api-usage}. Here an iterable sequence is created, which is wrapped in a \code{Requestable.from}. We transform this into a regular \obs by calling the \code{observe} operator with an interval of \textit{1 millisecond}. This operator encapsulates the whole mechanic described in this chapter and will return the \obs that polls the buffer. Given this return value, we can now use all operators that are defined on \obs and complete the operator chain using a \code{subscribe}.
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=ScalaStyle, caption={Using the Requestable API to control the flow of a source}, label={lst:requestable-api-usage}]
+val sequence: Range $=$ 0 until 133701
+val slowConsumer $=$ Observer((i: Int) $\Rightarrow$ println("> " + i),
+  e $\Rightarrow$ { e.printStackTrace(); System.exit(0) },
+  () $\Rightarrow$ { println("done"); System.exit(0) })
+		
+Requestable.from(sequence)
+  .observe(1 millisecond)
+  .filter(_ % 2 $==$ 0)
+  .map(2 *)
+  .take(20)
+  .subscribe(slowConsumer)
+\end{lstlisting}
+\end{minipage}
