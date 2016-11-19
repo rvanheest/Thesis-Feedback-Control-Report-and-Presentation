@@ -1,7 +1,7 @@
-\chapter{Backpressure solution with feedback control}
+\chapter{Overproduction solution with feedback control}
 \label{app:backpressure-solution}
 
-\begin{lstlisting}[style=ScalaStyle, caption={Universal, interactive interface, \code{Requestable}, used in the feedback system}]
+\begin{lstlisting}[style=ScalaStyle, caption={Universal, interactive interface}]
 import java.sql.ResultSet
 
 import applied_duality.reactive.{Observable, Subject}
@@ -19,9 +19,9 @@ trait Requestable[T] {
 }
 object Requestable {
 
-  implicit class RequestableObservable[T](val requestable: Requestable[T]) extends AnyVal {
+  implicit class RequestableObservableOperator[T](val requestable: Requestable[T]) extends AnyVal {
     def observe(timeout: Duration $=$ 1 second): Observable[T] $=$
-      BackpressureObservable.from(requestable, timeout)
+      RequestableObservable.from(requestable, timeout)
   }
 
   def from[T](iterable: Iterable[T]): Requestable[T] $=$ {
@@ -55,7 +55,7 @@ object Requestable {
 }
 \end{lstlisting}
 
-\begin{lstlisting}[style=ScalaStyle, caption={Implementation of \code{BackpressureObservable}}]
+\begin{lstlisting}[style=ScalaStyle, caption={Implementation of \code{RequestableObservable}}]
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 
@@ -65,7 +65,7 @@ import fbc2.Component
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-object BackpressureObservable {
+object RequestableObservable {
 
   def from[T](source: Requestable[T], intervalDuration: Duration $=$ 1 second): Observable[T] $=$
     Observable.create[T](subscriber $\Rightarrow$ {

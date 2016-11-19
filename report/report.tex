@@ -1,5 +1,6 @@
-\documentclass[a4,english]{report}
+\documentclass[a4,english,notitlepage]{report}
 \usepackage[a4paper, hmargin=2.5cm,vmargin=1.5cm]{geometry}
+%\usepackage{pslatex}
 \usepackage[colorlinks = true]{hyperref}
 \hypersetup{
   pdftitle    = {Master thesis - Feedback on Backpressure},
@@ -28,12 +29,13 @@
 \usepackage[titletoc, page]{appendix}
 
 \newdateformat{monthyeardate}{\monthname[\THEMONTH], \THEYEAR}
+\newdateformat{yeardate}{\THEYEAR}
 
 \crefname{appsec}{Appendix}{Appendices}
 
 %\newcommand{\todo}[1]{\textcolor{red}{\textbf{\large @TODO: #1}}}
 \newcommand{\code}[1]{\sloppy{\mbox{\texttt{#1}}}}
-\newcommand{\HRule}{\rule{\textwidth}{0.5mm}}
+\newcommand{\HRule}[1]{\rule{\textwidth}{#1}}
 
 \newcommand{\obs}{\texttt{Observable}\xspace}
 \newcommand{\obv}{\texttt{Observer}\xspace}
@@ -133,54 +135,115 @@
 }
 
 \begin{document}
+\pagenumbering{roman}
 \input{title}
 
-\pagestyle{plain}
-\pagenumbering{roman}
-\setcounter{page}{1}
 \input{0.0-acknowledgment}
-
 \clearpage
+
+% lege pagina
+\thispagestyle{empty}
+\phantom{p. 2}
+\clearpage
+
+%table of contents
 \setcounter{tocdepth}{1}
 {\hypersetup{linkcolor = black} \tableofcontents}
-
 \clearpage
+
+% lege pagina
+\thispagestyle{empty}
+\phantom{p. 2}
+\clearpage
+
+% list of figures
+{\hypersetup{linkcolor = black} \listoffigures}
+\clearpage
+
+% lege pagina
+\thispagestyle{empty}
+\phantom{p. 2}
+\clearpage
+
 \setcounter{page}{1}
 \setcounter{chapter}{-1}
 \pagenumbering{arabic}
 \input{0.1-introduction}
-
 \clearpage
+
 \input{1.0-problem-statement}
-
 \clearpage
+
+% lege pagina
+\thispagestyle{empty}
+\phantom{p. 2}
+\clearpage
+
 \input{2.0-hypothesis}
-
 \clearpage
+
+% lege pagina
+\thispagestyle{empty}
+\phantom{p. 2}
+\clearpage
+
 \input{3.0-intro-to-feedback-control}
-
 \clearpage
+
+% lege pagina
+\thispagestyle{empty}
+\phantom{p. 2}
+\clearpage
+
 \input{4.0-feedback-api}
-
 \clearpage
+
+% lege pagina
+\thispagestyle{empty}
+\phantom{p. 2}
+\clearpage
+
 \input{5.0-solving-overproduction-using-feedback-control}
-
 \clearpage
+
+% lege pagina
+\thispagestyle{empty}
+\phantom{p. 2}
+\clearpage
+
 \input{6.0-conclusion-and-future-work}
-
 \clearpage
-\begin{appendices}
-\crefalias{chapter}{appsec}
-\input{appendix1.0-balltracker-imperative}
-\input{appendix2.0-feedback-api}
-\input{appendix3.0-balltracker-reactive}
-\input{appendix4.0-feedback-backpressure-implementation}
-\end{appendices}
 
+% lege pagina
+\thispagestyle{empty}
+\phantom{p. 2}
 \clearpage
+
 \phantomsection\addcontentsline{toc}{chapter}{References}
 \renewcommand{\bibname}{References}
 \bibliographystyle{acm}
 \bibliography{references}
+\clearpage
 
+\begin{appendices}
+	\crefalias{chapter}{appsec}
+	
+	% lege pagina
+	\thispagestyle{empty}
+	\phantom{p. 2}
+	\clearpage
+	
+	\input{appendix1.0-balltracker-imperative}
+	
+	\input{appendix2.0-feedback-api}
+	\clearpage
+	
+	% lege pagina
+	\thispagestyle{empty}
+	\phantom{p. 2}
+	\clearpage
+	
+	\input{appendix3.0-balltracker-reactive}
+	\input{appendix4.0-feedback-backpressure-implementation}
+\end{appendices}
 \end{document}
