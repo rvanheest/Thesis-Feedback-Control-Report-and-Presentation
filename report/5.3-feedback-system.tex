@@ -36,6 +36,7 @@ The code for the feedback system itself is shown in \Cref{lst:buffer-feedback-co
 
 To measure the throughput of the buffer, we collect the elements during a certain interval. From this we measure how many elements have come in the queue, as well as the total number of elements that are currently in the queue. As a side-effect we reset the flag for \code{pollerVisited} to false, since we are now done interacting with the queue. Also, we provide a default starting value for the feedback system at this point, since initially the queue was empty and no elements were going in the queue. It is necessary to do so, as we next compare the current situation with the previous situation by using a \code{buffer(2, 1)}. Finally, we compute the throughput as described in \Cref{eq:throughput-fraction}. This value is fed as the input of the next feedback cycle without performing any operations on the way back.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Feedback system for controlling the buffer}, label={lst:buffer-feedback-control}]
 controller

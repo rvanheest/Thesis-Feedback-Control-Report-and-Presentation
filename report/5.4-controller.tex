@@ -17,6 +17,7 @@ As the attentive reader may already have noticed, this is an incremental control
 
 The controller itself is basically a stateful class with a transformation method to construct the next state. Furthermore we have an initial state defined on this class to get everything started. Using the API defined in the previous chapter, we can wrap this state into a \code{Component} using RxMobile's \code{Observable.scanLeft} operator. After the newest $\Delta n$ is extracted from this state, we use a \code{Component.scanLeft} to compute the actual $n$. In this step we also prevent the requested number of elements to go negative.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Controller implementation for controlling the buffer}, label={lst:buffer-controller}]
 class Controller(time: Int, val change: Int) {

@@ -50,6 +50,7 @@ The Reactive Streams API (see \Cref{lst:pub-sub}) looks fairly similar at first 
 
 This last method reveals the whole idea behind the Reactive Streams API, namely to let the \code{Subscriber} request a certain amount of elements from the \code{Publisher}. This way the \code{Subscriber} is in charge of how many elements it will receive eventually and the \code{Publisher} just has to send at most this amount of elements by calling the \code{onNext} method.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Publisher, Subscriber and Subscription}, label={lst:pub-sub}]
 trait Publisher[T] {
