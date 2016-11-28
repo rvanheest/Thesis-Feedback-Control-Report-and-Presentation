@@ -23,6 +23,7 @@ With this we have created an API that creates an \obs from an interactive source
 
 To demonstrate the intended use of this API, we included a small example below in \Cref{lst:requestable-api-usage}. Here an iterable sequence is created, which is wrapped in a \code{Requestable.from}. We transform this into a regular \obs by calling the \code{observe} operator with an interval of \textit{1 millisecond}. This operator encapsulates the whole mechanic described in this chapter and will return the \obs that polls the buffer. Given this return value, we can now use all operators that are defined on \obs and complete the operator chain using a \code{subscribe}.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Using the Requestable API to control the flow of a source}, label={lst:requestable-api-usage}]
 val sequence: Range $=$ 0 until 133701

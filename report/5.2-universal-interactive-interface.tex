@@ -11,14 +11,12 @@ The complete interface is called \code{Requestable[T]} and is shown in \Cref{lst
 
 Example implementations of this interface for \itr and \code{ResultSet} are included in \Cref{app:backpressure-solution}.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Universal, interactive interface used in the feedback system}, label={lst:universal-interactive-interface}]
 trait Requestable[T] {
-
   protected final val subject $=$ PublishSubject[T]()
-
   final def results: Observable[T] $=$ subject
-
   def request(n: Int): Unit
 }
 \end{lstlisting}

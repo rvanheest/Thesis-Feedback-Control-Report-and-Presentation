@@ -13,6 +13,7 @@ Subscribing to an \obs is basically nothing more than supplying an \obv to the f
 
 The order of operations is designed in such a way that it allows for lazy evaluation. If a cold \obs contains 5 elements and the operator sequence contains the operator \code{take(2)} (see \Cref{lst:lazy}), only the first 2 elements from this \obs will be evaluated by the upper half of the operator sequence, rather than all 5. After the second element has passed \code{take}, it sends an \code{onCompleted()} downstream, right after the second \code{onNext}, causing the stream to end without evaluating the other 3 elements.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Lazy evaluation}, label={lst:lazy}]
 Observable(1, 2, 3, 4, 5)
@@ -27,6 +28,7 @@ Following this order of operations, we can conclude that basically every operato
 
 This is also true for all kind of streams, whether hot or cold, whether or not it has latency and no matter what kind of source emits the data. This may seem quite surprising, especially for the hot \obs, since we always claimed that this type of stream is only controlled by its outside environment. However, an example of this is shown in \Cref{lst:blocking-hot-obs}. Here a cold \obs is subscribed to a \subj (\cref{line:blocking-hot-subject-subscribe}), making it hot according to \Cref{subsec:subjects}. At several points in the operator sequence the time passed since \code{start} is measured and printed. At \cref{line:blocking-hot-sleep} the callstack is blocked for 1 second by pausing the thread on which this whole process is running. The console output of executing \Cref{lst:blocking-hot-obs} is provided in \Cref{lst:console-output-blocking-hot}\footnote{Due to the inner workings of the JVM, the times shown here may vary by a couple of milliseconds in every execution.}.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Applying callstack blocking on a hot \obs}, label={lst:blocking-hot-obs}]
 def now $=$ System.currentTimeMillis()
@@ -44,6 +46,7 @@ timer.subscribe(subject) |\label{line:blocking-hot-subject-subscribe}|
 \end{lstlisting}
 \end{minipage}
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Console output from \Cref{lst:blocking-hot-obs}}, label={lst:console-output-blocking-hot}]
 [47] emitted - 1
