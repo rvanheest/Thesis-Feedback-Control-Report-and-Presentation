@@ -43,7 +43,7 @@ class BallTracker extends Application {
   }
 
   def update(implicit gc: GraphicsContext): Unit = {
-    val acceleration = pid map (a => math.max(math.min(a, 0.2), -0.2))
+    val acceleration = pid map (a => scala.math.max(scala.math.min(a, 0.2), -0.2))
     ball = ball accelerate acceleration
 
     // managing the history

@@ -1,6 +1,7 @@
 \chapter{Ball movement control - Reactive}
 \label{app:ball-movement-reactive}
 
+\hspace*{-\parindent}
 \begin{lstlisting}[style=ScalaStyle, caption={Ball movement control}, label={lst:ball-full-app-reactive}]
 import javafx.application.Application
 import javafx.rx.Events
@@ -20,18 +21,16 @@ class BallTracker extends Application {
 
   val (kp, ki, kd) $=$ (3.0, 0.0001, 80.0)
 
-  val pidX $=$ Controllers.pidController(kp, ki, kd)
-  val pidY $=$ Controllers.pidController(kp, ki, kd)
-
   def feedback: Component[Position, Ball2D] $=$ {
-    val fbcX $=$ Component.create[Position, Pos](_._1) >>> feedbackSystem(pidX)
-    val fbcY $=$ Component.create[Position, Pos](_._2) >>> feedbackSystem(pidY)
+    val fbcX $=$ Component.create[Position, Pos](_._1) >>> feedbackSystem
+    val fbcY $=$ Component.create[Position, Pos](_._2) >>> feedbackSystem
 
     fbcX.combine(fbcY)(Ball2D(_, _))
   }
 
-  def feedbackSystem(pid: Component[Double, Acc]): BallFeedbackSystem $=$
-    pid.map(d $\Rightarrow$ math.max(math.min(d * 0.001, 0.2), -0.2))
+  def feedbackSystem: BallFeedbackSystem $=$
+    Controllers.pidController(kp, ki, kd)
+      .map(d $\Rightarrow$ math.max(math.min(d * 0.001, 0.2), -0.2))
       .scan(new AccVel)(_ accelerate _).drop(1)
       .scan(Ball1D(ballRadius))(_ move _)
       .sample(16 milliseconds)
@@ -77,6 +76,7 @@ object BallTracker extends App {
 }
 \end{lstlisting}
 
+\hspace*{-\parindent}
 \begin{lstlisting}[style=ScalaStyle, caption={Ball movement \code{Draw} object}, label={lst:ball-full-draw-reactive}]
 import javafx.scene.canvas.GraphicsContext
 import javafx.scene.paint.Color

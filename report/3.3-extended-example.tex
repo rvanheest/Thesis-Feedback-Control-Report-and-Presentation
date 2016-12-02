@@ -47,6 +47,7 @@ In order to allow the ball to move in a natural way, we remind the reader of som
 
 The implementation of these required pieces of physics can be found in \Cref{lst:ball-physics}. We first define a \code{Position}, \code{Velocity} and \code{Acceleration} as tuples of \code{Double} as well as some mathematical operations on the tuple type. The \code{Ball} class describes the state of the ball having a position, velocity and acceleration. A second constructor (\code{apply}) defines the initial position with no acceleration or velocity. The method \code{accelerate} on this class takes a new acceleration and calculates a new state for the ball according to \Cref{eq:motion}. Notice that we discard the $\Delta t$ term, since this will always be equal to 1. To keep track of the ball's previous positions we define \code{History} to be a queue of \code{Position}s.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Ball motion physics}, label={lst:ball-physics}]
 type Position $=$ (Double, Double)
@@ -91,6 +92,7 @@ Now that the feedback cycle is implemented, we can plug this in a JavaFx applica
 
 Notice that with this feedback system we lack the notion of an external disturbance on the system under control. In this case there is none since the system is just the two \textit{sigma}s and the \textit{DRAW}. One could argue that the changing setpoint is kind of a disturbance, although this is by definition not the case. An example of an external disturbance on this particular system could be the terrain not being flat but rather containing hills and valleys. This would influence the ball's movement because of gravity, which would add a force in a third direction. For the sake of simplicity of this example we decided to not add this feature and stick with the flat terrain. We leave implementing this feature as an exercise to the reader.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Ball drawing}, label={lst:ball-feedback}]
 var ball $=$ Ball(ballRadius)

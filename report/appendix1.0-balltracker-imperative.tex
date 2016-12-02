@@ -1,6 +1,7 @@
 \chapter{Ball movement control - Imperative}
 \label{app:ball-movement}
 
+%\hspace*{-\parindent}
 \begin{lstlisting}[style=ScalaStyle, caption={Ball movement control}, label={lst:ball-full-app}]
 import javafx.application.Application
 import javafx.application.Platform.runLater
@@ -156,6 +157,7 @@ object Draw {
 }
 \end{lstlisting}
 
+\hspace*{-\parindent}
 \begin{lstlisting}[style=ScalaStyle, caption={Ball movement control}, label={lst:ball-full-utils}]
 package object ballmovement {
 
@@ -173,7 +175,6 @@ package object ballmovement {
 
   implicit def toRunnable(runnable: () $\Rightarrow$ Unit): Runnable $=$
     new Runnable { override def run() $=$ runnable() }
-
 
   implicit class Tuple2Math[X: Numeric, Y: Numeric](val src: (X, Y)) {
     import Numeric.Implicits._

@@ -67,6 +67,7 @@ This version of \comp gives us a first suitable implementation for composing ove
 
 As an example of a component that inherits this interface, we will show an implementation of a component that maintains a running average of its input elements.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Implementation of \code{RunningAverage} using the \textit{Immutable Component} interface}, label={lst:immutable-runningaverage}]
 class RunningAverage(n: Int, queue: Queue[Double]) extends Component[Double, Double] {
@@ -99,6 +100,7 @@ trait Component[I, O] {
 
 Using this \textit{Mutable Component} interface we can implement \code{RunningAverage} again. Rather than having the \code{queue} as a constructor parameter, we can now treat it as a field that is automatically instantiation on construction. With this we can mutate the queue when \code{update} is called. Notice that for this we either need to use a mutable queue here or declare the field mutable by using a \code{var}. Finally, the implementation of \code{action} doesn't change with respect to the former version.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Implementation of \code{RunningAverage} using the \textit{Mutable Component} interface}, label={lst:mutable-runningaverage}]
 class RunningAverage(n: Int) extends Component[Double, Double] {
@@ -228,6 +230,7 @@ trait Component[I, O] extends Observer[I] {
 
 To get this to work, there is a little bit of plumbing to be done. First of all, we need to get the values received in the \obv into the output \obs and meanwhile transform instances of type \code{I} into instances of type \code{O}. As we do not intent the implementer of the \comp interface to override the input or output functions, we have to introduce a new function into the interface in which the actual functionality of the component can be declared: \code{transform(is: Observable[I]): Observable[O]}. We also introduce a \subj which receives the input events from the \obv methods. As discussed in \Cref{subsec:subjects}, a \subj is both an \obv and an \obs, which means that we can implement the output function as applying the new \code{transform} function to this \subj.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={\comp interface}, label={lst:component-v1}]
 trait Component[I, O] extends Observer[I] {
@@ -246,6 +249,7 @@ trait Component[I, O] extends Observer[I] {
 
 Having set up the \comp interface in this way, comes with an extra benefit. By using the \code{transform} method that converts one \obs into another, we can leverage the operators defined on \obs to bring the mutable state of the \comp into the sequence of operators. We will demonstrate the implementation of a \comp and the usage of mutable state by following up on the earlier example of the running average.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Implementation of \code{RunningAverage} using the \comp interface}, label={lst:running-average-final}]
 class RunningAverage(n: Int) extends Component[Double, Double] {
@@ -280,6 +284,7 @@ On the same note we can have an \code{identity} component which immediately retu
 
 Finally, we add a function \code{from}, which ignores the input stream and only emits the items from its argument stream.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Various ways to create a \comp}, label={lst:creating-component}]
 object Component {
@@ -314,6 +319,7 @@ The behavior for regular \code{OnNext} events can be achieved by connecting the 
 
 The behavior of the terminal events can be achieved by using the functionality of Rx to compose subscriptions. In RxMobile every \obv is a \subs as well and likewise every \comp is an \obv, so we just need to \textit{add} the subscriptions to each other. To do so, we also require the subscription that represents the output of the \comp to be created. We get this by creating a new \obs and using the \obv in the lambda expression for this.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Linear composition operator \code{concat}}, label={lst:concat-operator}]
 implicit class Operators[I, O](val src: Component[I, O]) {
@@ -336,6 +342,7 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 \subsubsection{Abstracting over composition}
 As we will use this feature of combining the \subs with the \comp to be created, we will already abstract over this and use this in upcoming operators as well.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={\code{lift} operator}, label={lst:lift-operator}]
 def lift[X, Y](f: (Observable[X], Observer[Y])$\Rightarrow$Unit): Component[X, Y] $=$ {
@@ -348,6 +355,7 @@ def lift[X, Y](f: (Observable[X], Observer[Y])$\Rightarrow$Unit): Component[X, Y
 
 We can then use \code{lift} in \code{concat} as follows:
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Revised implementation of the \code{concat} operator}, label={lst:concat-revised}]
 implicit class Operators[I, O](val src: Component[I, O]) {
@@ -371,6 +379,7 @@ Before we continue developing new operators, we have to observe that both \code{
 
 The \textit{Arrow} type class defines a couple of functions which are listed in \Cref{lst:arrow-typeclass} in Haskell. First of all, it defines \code{arr} to be a function that accepts a function from \code{b} to \code{c} as its input and the arrow from \code{b} to \code{c} as its output. This function is completely analogous to the \code{apply} method described earlier, where \code{b} and \code{c} are both of type \obs. Besides that, \textit{Arrow} defines the \code{(>>>)} operator, which composes two arrows together into one single arrow. Here the output of the first arrow is used as an input for the second arrow. This is of course analogue to the \code{concat} operator we just implemented. We define \code{(>>>)} as a second way of writing a linear composition.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=HaskellStyle, caption={\textit{Arrow} type class}, label={lst:arrow-typeclass}]
 class Arrow a where
@@ -391,6 +400,7 @@ add x y = $\ldots$
 
 The input type \code{b} of the resulting arrow of this function needs to supply its value to both inputs of this functions arguments and combine its outputs. This is however not possible with the current \code{(>>>)} operator we have defined. Hence we require some new operators to be added to the \textit{Arrow} type class. Hughes defines these operators in terms of each other, leaving only one operator open that requires a custom implementation.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=HaskellStyle, caption={\textit{Arrow} type class}, label={lst:arrow-typeclass-full}]
 class Arrow a where
@@ -441,6 +451,7 @@ The operator \code{first} takes an arrow from \code{b} to \code{c} as its argume
 
 Implementing these two operators for \comp requires us to split the `\textit{input tuple stream}', apply the given \comp to the first part of this stream and merge it back with the second part of the stream. However, remember that for \obs there are a number of distinct operators for merging streams, each having their own behavior: \code{flatMap}, \code{combineLatest}, \code{withLatestFrom}, \code{zip}, \code{merge}, \code{concat}, etcetera. Since we want to merge the \comp's output stream and the second part of the input stream one-by-one, the \code{zip} operator is required here. The rest of the implementation details are just straightforward, using the earlier defined \code{lift} and taking care of the required subscriptions.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Implementations of the \textit{Arrow}'s \code{first} and \code{second} operators}, label={lst:first-and-second}]
 implicit class Operators[I, O](val src: Component[I, O]) {
@@ -465,6 +476,7 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 
 The other two operators that Hughes defines for the \textit{Arrow} type class are \code{(***)} and \code{(\&\&\&)}. The former operator is used in ``\textit{parallel composition}'' of arrows, taking its input consisting of two arrows and merging them into one arrow of tuples. This is done by applying \code{first} to the first input argument and \code{second} to the second. The latter operator, takes this behavior one step further by specifying that the input type of both input arrows must be the same. With this we can construct a resulting arrow that has an input type \code{b}, whose values are supplied to both arrows, and an output type which is the tuple (or product) of both arrow's results. This type of composition is sometimes referred to as ``\textit{fanout composition}''. Implementations of these operators in the context of \comp are equivalent to the ones in \Cref{lst:arrow-typeclass-full}:
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Implementations of the \textit{Arrow}'s \code{(***)} and \code{(\&\&\&)} operators}, label={lst:parallel-and-fanout}]
 implicit class Operators[I, O](val src: Component[I, O]) {
@@ -488,8 +500,9 @@ add x y = (x &&& y) >>> arr ($\lambda$(b,c) $\rightarrow$ b + c)
 \end{lstlisting}
 \end{minipage}
 
-Hughes finishes this trail by generalizing the \code{add} to a \code{liftA2}, which is equivalent in functionality to Haskell's \code{liftM2} which combines the results of two monadic computations. Besides two input arrows, \code{liftA2} accepts a combinator function that is applied after the fanout composition of the two arrows. We define a similar operator called \code{combine} in our API for the purpose of parallel composition:
+Hughes finishes this trail by generalizing the \code{add} to a \code{liftA2}, which is equivalent in functionality to Haskell's \code{liftM2} which combines the results of two monadic computations. Besides two input arrows, \code{liftA2} accepts a combinator function that is applied after the fanout composition of the two arrows (see \Cref{fig:combine-operator}). We define a similar operator called \code{combine} in our API for the purpose of parallel composition:
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Implementation of the \code{Arrow}'s \code{liftA2} or \code{combine} operator}, label={lst:combine-operator}]
 implicit class Operators[I, O](val src: Component[I, O]) {
@@ -500,6 +513,14 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 }
 \end{lstlisting}
 \end{minipage}
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{figures/API-combine-operator.png}
+	\end{center}
+	\caption{Parallel composition}
+	\label{fig:combine-operator}
+\end{figure}
 
 \subsubsection{Problems with parallel composition on \comp}
 Although our implementation of these parallel composition operators in the context of \comp might seem fine at first glance, the observant reader might have spotted some flaws in it. The main concern here is the choice of using \code{zip} in the \code{first} operator. As discussed in section \Cref{sec:fastproc-slowcons}, \code{zip} is particularly risky to use given the unpredictable nature of its source streams. This same danger comes up in our implementation of \code{first}, as the inner component might produce more than one element for every received element or as it might start with a certain number of elements before producing elements based on what it receives\footnote{This can be achieved using \code{startWith}, which is a well-known operator for \obs and which we will introduce later in the context of \comp.}.
@@ -512,6 +533,7 @@ The \code{(***)} operator can then be implemented in terms of \code{lift} by spl
 
 The other operators, \code{(\&\&\&)} and \code{combine} do not require any modifications as they were already implemented in terms of \code{(***)}. The full implementation of the parallel composition operators in our API now looks as follows:
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={New implementation of the \textit{Arrow}'s operators}, label={lst:new-arrow-implementation}]
 implicit class Operators[I, O](val src: Component[I, O]) {
@@ -546,15 +568,17 @@ One of the reasons that Hughes introduced the \textit{Arrow} \cite{hughes2000-ar
 
 As an alternative to introducing the \code{(<*>)} operator as Swierstra and Duponcheel did, Hughes introduces the \textit{Arrow} as the answer to combining non-monadic computations. With this he shows that every \textit{Monad} is in fact an \textit{Arrow}, but that not every \textit{Arrow} is a \textit{Monad}. For this he introduces another type class \textit{ArrowApply} (\Cref{lst:arrow-apply}), which he shows to be equivalent to the \textit{Monad} type class. From this it follows that for an \textit{Arrow} to be also a \textit{Monad} it must be able to implement the \textit{ArrowApply} type class.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
-\begin{lstlisting}[style=HaskellStyle, caption={\textit{ArrowApply} type class}, label={lst:arrow-apply}, numbers=none]
+\begin{lstlisting}[style=HaskellStyle, caption={\textit{ArrowApply} type class}, label={lst:arrow-apply}]
 class Arrow a $\Rightarrow$ ArrowApply a where
   app :: a (a b c, b) c
 \end{lstlisting}
 \end{minipage}
 
+\hspace*{-\parindent}
 \begin{minipage}{0.6\linewidth}
-\begin{lstlisting}[style=HaskellStyle, caption={Monadic type classes}, label={lst:type-classes-for-monads}, captionpos=b, numbers=none]
+\begin{lstlisting}[style=HaskellStyle, caption={Monadic type classes}, label={lst:type-classes-for-monads}, captionpos=b]
 class Functor f where
   fmap :: (a $\rightarrow$ b) $\rightarrow$ f a $\rightarrow$ f b
 
@@ -594,6 +618,7 @@ The \textit{Functor} type class (\Cref{lst:type-classes-for-monads}) contains a 
 
 The \textit{Applicative} type class (\Cref{lst:type-classes-for-monads}) contains two functions, \code{pure} and \code{(<*>)}. We already have the former function in our API, namely \code{from} (\Cref{lst:creating-component}). The latter function is almost the same as \code{fmap}, only with the difference that the function is wrapped inside an \textit{Applicative}. The two input parameters of \code{(<*>)} need to be merged into a single \textit{Applicative} where the function from the first parameter is applied to the value from the second parameter. We also already have this functionality in the form of the \code{combine} operator, which combines two instances of \comp using a given function.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={\textit{Functor} and \textit{Applicative} operators}, label={lst:functor-and-applicative}]
 implicit class Operators[I, O](val src: Component[I, O]) {
@@ -633,6 +658,7 @@ Because the implementations of these operators will be almost identical in every
 
 Some of the operators present in the API are listed in \Cref{lst:rx-style-operators}, though many more can be thought of to be added.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Rx style operators}, label={lst:rx-style-operators}]
 implicit class Operators[I, O](val src: Component[I, O]) {
@@ -654,6 +680,7 @@ implicit class Operators[I, O](val src: Component[I, O]) {
 
 Given these new operators, we can reimplement the \code{RunningAverage} example from \Cref{lst:running-average-final}. As all will agree, this looks much better and makes the code more readable and usable!
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Implementation of \code{RunningAverage} using the new Rx style operators}, label={lst:running-average-with-operators}]
 implicit class RunningAverageOperator(val src: Component[Double, Double]) {
@@ -690,6 +717,7 @@ With the \code{loop} function in place, we can implement the \code{feedback} ope
 
 Finally note that, since we have to calculate the \textit{tracking error} as the difference between the setpoint and the control output (\Cref{eq:tracking-error}), we have to restrict the \comp's input type to be \code{Numeric}.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Feedback operator}, label={lst:feedback-operator}]
 implicit class Operators[I, O](val src: Component[I, O]) {

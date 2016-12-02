@@ -21,17 +21,15 @@ class BallTracker extends Application {
   val ki = 0.0001
   val kd = 80.0
 
-  val pidX = Controllers.pidController(kp, ki, kd)
-  val pidY = Controllers.pidController(kp, ki, kd)
-
   def feedback(clicks: Observable[Position]): Component[Unit, Ball2D] = {
-    val fbcX = Component.create[Position, Pos](_._1) >>> feedbackSystem(pidX)
-    val fbcY = Component.create[Position, Pos](_._2) >>> feedbackSystem(pidY)
+    val fbcX = Component.create[Position, Pos](_._1) >>> feedbackSystem
+    val fbcY = Component.create[Position, Pos](_._2) >>> feedbackSystem
     Component.from(clicks) >>> fbcX.combine(fbcY)(Ball2D(_, _))
   }
 
-  def feedbackSystem(pid: Component[Double, Double]): BallFeedbackSystem = {
-    pid.map(d => math.max(math.min(d * 0.001, 0.2), -0.2))
+  def feedbackSystem: BallFeedbackSystem = {
+    Controllers.pidController(kp, ki, kd)
+      .map(d => scala.math.max(scala.math.min(d * 0.001, 0.2), -0.2))
       .scan(new AccVel)(_ accelerate _).drop(1)
       .scan(Ball1D(ballRadius))(_ move _)
       .sample(16 milliseconds)

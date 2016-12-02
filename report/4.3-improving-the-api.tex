@@ -5,6 +5,7 @@ One might argue that this is just how this operator is supposed to be set up for
 
 The refactoring we propose in this section is to remove these ceremonial elements from the \comp interface and to really make the \code{transform} function the essence of the interface. For this we remove the \subj, the associated \code{\char`_subscription} value as well as the inheritance from \code{Observer[I]}. What we end up with is a simple class \comp with a \code{transform} function of type \code{Observable[I] $\Rightarrow$ Observable[O]} as its argument and in single method called \code{run} that transforms an input stream into an output stream (\Cref{lst:component-v2}). The associated \code{apply} function is changed accordingly.
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Revised version of the \comp interface}, label={lst:component-v2}]
 class Component[I, O](transform: Observable[I] $\Rightarrow$ Observable[O]) {
@@ -22,6 +23,7 @@ object Component {
 
 Due to the way the operators are implemented we are forced to change only three of them, which we will refer to as the primative operators. These are \code{concat}, \code{(***)} and \code{feedback}. All the other operators are composed from these three operators and the \code{apply} function. The primative operators can be recognized in the previous section as those operators that were implemented in terms of \code{lift}. With the introduction of this revised version of \comp we will no longer have a need for \code{lift} and we can therefore discard this operator.  The new implementations of these primitive operators are shown in \Cref{lst:primative-operator-revisions}
 
+\hspace*{-\parindent}
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Revised implementations of the primitive operators}, label={lst:primative-operator-revisions}]
 implicit class Operators[I, O](val src: Component[I, O]) {

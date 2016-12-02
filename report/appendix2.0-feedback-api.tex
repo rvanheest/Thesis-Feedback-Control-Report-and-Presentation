@@ -18,6 +18,7 @@ object Component {
 }
 \end{lstlisting}
 
+\hspace*{-\parindent}
 \begin{lstlisting}[style=ScalaStyle, caption={Operators on \comp}, label={lst:component-operators}]
 import applied_duality.reactive.schedulers.{NewThreadScheduler, TrampolineScheduler}
 import applied_duality.reactive.{Observable, Observer, Scheduler, Subject}
@@ -47,7 +48,6 @@ package object component {
     def combine[X, Y](other: Component[I, X])(f: (O, X) $\Rightarrow$ Y): Component[I, Y] $=$
       (src &&& other) >>> Component.create(f.tupled)
   }
-  
 
   implicit class ApplicativeOperators[I, O](val src: Component[I, O]) {
     def map[X](f: O $\Rightarrow$ X): Component[I, X] $=$ src >>> Component.create(f)
