@@ -20,7 +20,8 @@ To get to a suitable API we must first of all observe that a component as descri
 	\item $\omega$ denotes the output function; $S \times \Sigma \rightarrow \Gamma$
 \end{itemize}
 
-We can define an intuitive mapping from this mathematical description of a Mealy Machine to Janert's component to show their relation. Observe that $\Sigma$ and $\Gamma$ are the component's input and output types (which are of type \code{Double}). The mutable state that is implicitly present in the component can be denoted by the set of internal states $S$ in the Mealy Machine, with $s_0$. For a component like the \textit{On/Off Controller} this mutable state is a \code{Boolean} and therefore $S = {True, False}$, while the \textit{Integral Controller} holds the current sum of all past elements and thus maps to a set $S$ of all $Double$ values. More complex states can be created by applying categorical principles of product and co-product. Transition function $\delta$ and output function $\omega$ are generalized versions of the \code{work} method on Janert's component. These transform the input, combined with the component's current state, into an output and a new state. For the \textit{Integral Controller} this transformation consists of adding the input to the current sum, saving this new cumulative as the component's new state as well as returning this new state.\\
+We can define an intuitive mapping from this mathematical description of a Mealy Machine to Janert's component to show their relation. Observe that $\Sigma$ and $\Gamma$ are the component's input and output types (which are of type \code{Double}). The mutable state that is implicitly present in the component can be denoted by the set of internal states $S$ in the Mealy Machine, with $s_0$. For a component like the \textit{On/Off Controller} this mutable state is a \code{Boolean} and therefore $S = {True, False}$, while the \textit{Integral Controller} holds the current sum of all past elements and thus maps to a set $S$ of all $Double$ values. More complex states can be created by applying categorical principles of product and co-product. Transition function $\delta$ and output function $\omega$ are generalized versions of the \code{work} method on Janert's component. These transform the input, combined with the component's current state, into an output and a new state. For the \textit{Integral Controller} this transformation consists of adding the input to the current sum, saving this new cumulative as the component's new state as well as returning this new state.
+\clearpage
 
 Note that the two functions $\delta$ and $\omega$ can be coalesced into a single function $\lambda: S \times \Sigma \rightarrow S \times \Gamma$. This function $\lambda$ can also be written as a type definition in Scala:
 
@@ -71,7 +72,6 @@ As an example of a component that inherits this interface, we will show an imple
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Implementation of \code{RunningAverage} using the \textit{Immutable Component} interface}, label={lst:immutable-runningaverage}]
 class RunningAverage(n: Int, queue: Queue[Double]) extends Component[Double, Double] {
-
   def update(u: Double): RunningAverage $=$ {
     if (queue.length $==$ n) queue.dequeue
     queue.enqueue(u)
@@ -104,7 +104,6 @@ Using this \textit{Mutable Component} interface we can implement \code{RunningAv
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Implementation of \code{RunningAverage} using the \textit{Mutable Component} interface}, label={lst:mutable-runningaverage}]
 class RunningAverage(n: Int) extends Component[Double, Double] {
-
   val queue $=$ Queue[Double]()
 
   def update(u: Double): Unit $=$ {
@@ -288,10 +287,9 @@ Finally, we add a function \code{from}, which ignores the input stream and only 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}[style=ScalaStyle, caption={Various ways to create a \comp}, label={lst:creating-component}]
 object Component {
-  def apply[I, O](factory: Observable[I] $\Rightarrow$ Observable[O]) $=$
-    new Component[I, O] {
-      def transform(input: Observable[I]) $=$ factory(input)
-    }
+  def apply[I, O](factory: Observable[I] $\Rightarrow$ Observable[O]) $=$ new Component[I, O] {
+    def transform(input: Observable[I]) $=$ factory(input)
+  }
 
   def create[I, O](func: I $\Rightarrow$ O) $=$ Component[I, O](_.map(func))
   
@@ -665,7 +663,6 @@ implicit class Operators[I, O](val src: Component[I, O]) {
   $\ldots$
 
   def liftRx[Y](f: Observable[O] $\Rightarrow$ Observable[Y]) $=$ src >>> Component(f)
-  
   def drop(n: Int): Component[I, O] $=$ liftRx(_.drop(n))
   def filter(predicate: O $\Rightarrow$ Boolean): Component[I, O] $=$ liftRx(_.filter(predicate))
   def map[X](f: O $\Rightarrow$ X): Component[I, X] $=$ liftRx(_.map(f))
