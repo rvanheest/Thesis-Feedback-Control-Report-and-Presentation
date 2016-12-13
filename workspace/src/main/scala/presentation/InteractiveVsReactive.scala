@@ -14,10 +14,14 @@ object Interactive extends App {
     println(i)
 
   it.foreach(println)
+
+  it.map(i => i + 1).filter(i => i % 2 == 0).foreach(println)
 }
 
 object Reactive extends App {
 
   val observable = Observable(0, 1, 2, 3)
   observable.subscribe(println(_))
+
+  observable.map(i => i + 1).filter(i => i % 2 == 0).subscribe(println(_))
 }

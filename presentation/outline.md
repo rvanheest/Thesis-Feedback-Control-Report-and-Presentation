@@ -6,7 +6,7 @@ Welcome
 * thanks for coming; very glad to have you all here
 * especially welcome to the thesis committee
 * Erik joins from Silicon Valley
-* goal of this afternoon: present and conclude my master thesis research and finish my studies at TU Delft
+* goal of this afternoon: present the results of my master thesis research and finish my studies at TU Delft
 * schedule:
     - presentation by me
     - questions from the audience
@@ -16,13 +16,13 @@ Welcome
 Introduction
 ------------
 * Venkat Subramaniam: "We work in a field where right about every ten years, we'll think of a new name for what we already do, and get all excited about it. This time around it's reactive programming... "
-* Reactive programming invented by Gerard Berry (1989):
+* Reactive programming invented by the French computer scientist Gerard Berry (1989):
     - *Interactive programs* interact at their own speed with users or with other programs
     - *Reactive programs* also maintain a continuous interaction with their environment, but **at a speed which is determined by the environment**, not by the program itself.
     - Example (code) of interactive program (while-loop over `Iterable`, rewritten to foreach `List(1, 2, 3, 4).foreach(i => println(i))`)
     - Example (code) of reactive program (`Observable.just(1, 2, 3, 4).subscribe(i => println(i))`)
+    - Example of operator similarity between interactive and reactive
     - emphasize the point that in reactive programming the **producer is in charge** of the data flow
-    - effects of computation
 
 
 Overproduction
