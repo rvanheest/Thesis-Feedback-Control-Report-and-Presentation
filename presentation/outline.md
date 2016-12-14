@@ -55,11 +55,15 @@ Overproduction
 Feedback Control
 ----------------
 * topic that is not well-known in computer science
+    - mainly mathematically defined and tought (Laplace transformations)
     - used in all other area's of science and engineering
+    - we don't really know the mathematical functions behind datastructures
 * examples
     - thermostate
     - space shuttle
-    - 
+    - fosset system
+    - washing machine
+    - chicken head
 * basic feedback system
     - system under control
     - control output
@@ -67,48 +71,26 @@ Feedback Control
     - tracking error
     - controller
     - control input
-    - example washing machine
+    - example thermostate
 * API for creating and running feedback systems
     - production systems
     - using Rx
     - mention derivation of API/operators
-    - example with ball motion
+* example with ball motion
+    def feedbackSystem: BallFeedbackSystem = {
+        Controllers.pidController(kp, ki, kd)
+            .map(d => scala.math.max(scala.math.min(d * 0.001, 0.2), -0.2))
+            .scan(new AccVel)(_ accelerate _)
+            .drop(1)
+            .scan(Ball1D(ballRadius))(_ move _)
+            .sample(16 milliseconds)
+            .feedback(_.position)
+    }
+    
+    def feedback: Component[Setpoint, Ball2D] = {
+        val fbcX = Component.create[Setpoint, Pos] { case (x, _) => x } >>> feedbackSystem
+        val fbcY = Component.create[Setpoint, Pos] { case (_, y) => y } >>> feedbackSystem
 
-
-
-
-
-
-
-
-
-Introduction
-------------
-* story about backpressure with screenshot of https://github.com/ReactiveX/RxJava/releases?after=0.20.0-RC3
-    - use wiki article https://github.com/ReactiveX/RxJava/wiki/Backpressure#how-a-subscriber-establishes-reactive-pull-backpressure
-* backpressure as solution to overproduction
-    - what is overproduction (fast producer, slow consumer)
-    - backpressure approach
-    - Reactive Streams interface
-* question: is RS and backpressure this still reactive?
-    - formal definition by Berry
-    - RS derivation (don't show!!!) shows it is not reactive (+ screenshot from https://youtu.be/pOl4E8x3fmw?t=32m59s)
-    - leads to all kinds of interesting questions about how to implement operators like merge en group (don't go into this, only mention it)
-    - quote from (https://github.com/ReactiveX/RxJava/wiki/backpressure): "*Backpressure doesn’t make the problem of an overproducing Observable or an underconsuming Subscriber go away. **It just moves the problem up the chain of operators to a point where it can be handled better.***"
-* various kinds of sources
-    - hot vs cold
-    - [sync vs async] cold
-    - backpressure/RS can only solve for (sync/async) cold sources (which is the not-reactive part)
-
-
-Connection with feedback control
---------------------------------
-* overproduction seen as a control problem
-
-
-
-    - why not move it even further, to the *source* of the stream?
-    - various kinds of sources (hot/cold/sync/async)
-    - restrict to (async) cold for the rest of this talk
-
-
+        fbcX.combine(fbcY)(Ball2D(_, _))
+    }
+    
