@@ -77,6 +77,7 @@ Feedback Control
     - using Rx
     - mention derivation of API/operators
 * example with ball motion
+    ```scala
     def feedbackSystem: BallFeedbackSystem = {
         Controllers.pidController(kp, ki, kd)
             .map(d => scala.math.max(scala.math.min(d * 0.001, 0.2), -0.2))
@@ -93,4 +94,5 @@ Feedback Control
 
         fbcX.combine(fbcY)(Ball2D(_, _))
     }
+    ```
     
