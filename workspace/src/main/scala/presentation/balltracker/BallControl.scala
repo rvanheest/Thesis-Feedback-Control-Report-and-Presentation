@@ -49,13 +49,7 @@ class BallControl extends Application {
     * @see [[feedback]]
     */
   def feedbackSystem: BallFeedbackSystem = {
-    Controllers.pidController(kp, ki, kd)
-      .map(acc => restrictAcceleration(acc))
-      .scan(new AccVel)((accvel, acc) => accvel.accelerate(acc))
-      .drop(1)
-      .scan(Ball1D(ballRadius))((ball, accvel) => ball.move(accvel))
-      .sample(16 milliseconds)
-      .feedback(ball => ball.position)
+    ???
   }
 
   /**
@@ -68,7 +62,7 @@ class BallControl extends Application {
     val fbcX = Component.create[Setpoint, Pos] { case (x, _) => x } >>> feedbackSystem
     val fbcY = Component.create[Setpoint, Pos] { case (_, y) => y } >>> feedbackSystem
 
-    fbcX.combine(fbcY)((ballX, ballY) => Ball2D(ballX, ballY))
+    ???
   }
 
   def start(stage: Stage): Unit = {
