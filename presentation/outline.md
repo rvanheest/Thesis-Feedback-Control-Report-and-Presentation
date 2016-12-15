@@ -30,20 +30,17 @@ Overproduction
 * fast producer, slow consumer
     - producer is in charge
     - naive solution: buffering - doesn't work
-    - lossy/loss-less operators
+* lossy/loss-less/combined operators
 * sources matter
     - hot source - can't be interacted with (mouse)
     - cold source - can be interacted with (iterable collection)
 * further distinction in cold source
     - cold async dependent on notion of time
     - cold sync not dependent on notion of time
-    - FIVE effects of computation
 * backpressure/reactive-streams/reactive-pull
     - tell the source how much data it can produce
     - power given to every operator
-    - problems with implementations
-        > merge
-        > groupBy
+    - problems with implementations > merge example
     - does not follow the definition of RP
 * alternative solution for overproduction in cold sources
     - can't do much for the hot sources
@@ -80,7 +77,7 @@ Feedback Control
     ```scala
     def feedbackSystem: BallFeedbackSystem = {
         Controllers.pidController(kp, ki, kd)
-            .map(d => scala.math.max(scala.math.min(d * 0.001, 0.2), -0.2))
+            .map(restrictAcceleration)
             .scan(new AccVel)(_ accelerate _)
             .drop(1)
             .scan(Ball1D(ballRadius))(_ move _)
@@ -95,4 +92,50 @@ Feedback Control
         fbcX.combine(fbcY)(Ball2D(_, _))
     }
     ```
-    
+
+
+Feedback applied to overproduction
+----------------------------------
+* recap
+    - overproduction: fast producer, slow consumer
+    - hot source: can't be interacted with; lossy and lossless operators
+    - cold source: can be interacted with; backpressure/reactive streams
+    - problems with backpressure: does not belong in reactive API according to Gerard Berry; problems with implementing operators
+* general overview of my solution
+    - focus on cold source
+    - bring overproduction handling to the place where it can be handled best: **the source**
+    - put a feedback system between the source and the stream
+    - consider the rest of the stream to be hot
+* feedback system
+    - cold source
+    - operators & consumer
+    - source control: request `n` elements
+    - put resulting elements in buffer
+    - buffer drained by operators & consumers
+    - controller provides `n`
+    - feedback system
+    - metric
+        + #elements in buffer - fixed setpoint?
+        + throughput - ratio between #elements in/out
+    - throughput formula's
+    - setpoint: 1.0
+* Requestable
+    - universal interactive interface
+    - request elements
+    - stream them to you
+    - various instances (Iterable/ResultSet)
+    - `observe` with sample rate
+* demo in slide
+* compared to backpressure
+    - clean way to wrap a cold source in a reactive programming model
+    - overproduction safety
+    - everything after the feedback system is considered hot
+    - operators stay reactive
+
+
+Conclusion
+----------
+* Main achievements
+    - analysis of sources and existing solutions for overproduction
+    - feedback4s
+    - reactive solution to overproduction problem for cold sources

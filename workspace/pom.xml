@@ -57,6 +57,12 @@
 			<version>0.26.4</version>
 		</dependency>
 
+		<dependency>
+			<groupId>nl.applied-duality</groupId>
+			<artifactId>FeedbackControl-Overproduction-RxScala</artifactId>
+			<version>0.0.1</version>
+		</dependency>
+
 		<!-- Feedback library -->
 		<dependency>
 			<groupId>nl.applied-duality</groupId>

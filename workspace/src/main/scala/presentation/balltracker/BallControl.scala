@@ -37,6 +37,10 @@ class BallControl extends Application {
   val ki = 0.0001
   val kd = 80.0
 
+  def restrictAcceleration(acc: Acc): Acc = {
+    scala.math.max(scala.math.min(acc * 0.001, 0.2), -0.2)
+  }
+
   /**
     * Creates a one-dimensional feedback system for controlling the ball's movement.
     * To create two-dimensional control, two of these systems are combined in [[feedback]].
@@ -46,12 +50,12 @@ class BallControl extends Application {
     */
   def feedbackSystem: BallFeedbackSystem = {
     Controllers.pidController(kp, ki, kd)
-      .map(d => scala.math.max(scala.math.min(d * 0.001, 0.2), -0.2))
-      .scan(new AccVel)(_ accelerate _)
+      .map(acc => restrictAcceleration(acc))
+      .scan(new AccVel)((accvel, acc) => accvel.accelerate(acc))
       .drop(1)
-      .scan(Ball1D(ballRadius))(_ move _)
+      .scan(Ball1D(ballRadius))((ball, accvel) => ball.move(accvel))
       .sample(16 milliseconds)
-      .feedback(_.position)
+      .feedback(ball => ball.position)
   }
 
   /**
@@ -64,7 +68,7 @@ class BallControl extends Application {
     val fbcX = Component.create[Setpoint, Pos] { case (x, _) => x } >>> feedbackSystem
     val fbcY = Component.create[Setpoint, Pos] { case (_, y) => y } >>> feedbackSystem
 
-    fbcX.combine(fbcY)(Ball2D(_, _))
+    fbcX.combine(fbcY)((ballX, ballY) => Ball2D(ballX, ballY))
   }
 
   def start(stage: Stage): Unit = {
