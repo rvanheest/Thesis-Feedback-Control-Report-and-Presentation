@@ -45,11 +45,35 @@
 			<version>0.0.1</version>
 		</dependency>
 
+		<dependency>
+			<groupId>io.reactivex</groupId>
+			<artifactId>rxjavafx</artifactId>
+			<version>0.3.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.reactivex</groupId>
+			<artifactId>rxscala_2.11</artifactId>
+			<version>0.26.4</version>
+		</dependency>
+
+		<dependency>
+			<groupId>nl.applied-duality</groupId>
+			<artifactId>FeedbackControl-Overproduction-RxScala</artifactId>
+			<version>0.0.1</version>
+		</dependency>
+
 		<!-- Feedback library -->
 		<dependency>
 			<groupId>nl.applied-duality</groupId>
 			<artifactId>FeedbackControl-Scala</artifactId>
 			<version>0.0.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.github.rvanheest</groupId>
+			<artifactId>feedback4s</artifactId>
+			<version>1.0</version>
 		</dependency>
 
 		<!-- Scala Library -->
